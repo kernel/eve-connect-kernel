@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vercel/
+.eve/
+.output/
+.workflow-data/
+.env
+.env.local
+*.log
+.DS_Store
