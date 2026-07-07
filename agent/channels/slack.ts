@@ -1,10 +1,10 @@
 import { slackChannel } from "eve/channels/slack";
-import { connectSlackCredentials } from "@vercel/connect/eve";
 
-// The Slack channel auto-renders every HITL prompt (ask_question options and
-// approve/deny approvals) as buttons/selects and resumes the parked session on
-// click — no button wiring needed here. Replace the Connect UID with yours.
+// Renders every ask_question / approval as Slack buttons and resumes the parked
+// session on click — no button wiring needed. By default it reads
+// SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET from the environment (classic Slack
+// app). To use Vercel Connect instead, see the README and pass
+// `credentials: connectSlackCredentials("slack/<uid>")`.
 export default slackChannel({
-  credentials: connectSlackCredentials("slack/eve-browser-agent"),
   threadContext: { since: "last-agent-reply" },
 });
