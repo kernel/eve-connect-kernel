@@ -16,6 +16,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "24": "^0.0.0",
     "@ai-sdk/anthropic": "^4.0.8",
     "@onkernel/sdk": "^0.74.0",
     "@vercel/connect": "^0.3.2",

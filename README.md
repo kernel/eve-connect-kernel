@@ -24,7 +24,8 @@ agent/
 
 ## Prerequisites
 
-- **Node 24+**
+- **Node 24+** — if you see `npm warn EBADENGINE` during install, your Node version is too old. The agent may still run on Node 22, but Node 24+ is required. Upgrade with `nvm install 24 && nvm use 24` or `brew install node@24`.
+- **Vercel CLI** — `npm i -g vercel@latest` (needed for local dev and deployment)
 - **`KERNEL_API_KEY`** — a Kernel API key (https://www.kernel.sh)
 - A model key — **`ANTHROPIC_API_KEY`** for the default direct provider (or set `AI_GATEWAY_API_KEY` and switch `agent/agent.ts` to a Vercel AI Gateway model slug)
 
@@ -98,16 +99,33 @@ vercel connect attach <uid> --triggers --trigger-path /eve/v1/slack --yes
 
 `FF_CONNECT_ENABLED=1` turns on the (feature-flagged) Connect commands. `--triggers` enables Slack Event Subscriptions (`app_mention`, `message.im`). The `detach` + `attach --trigger-path /eve/v1/slack` re-points the webhook at eve's Slack route, which the default Connect path doesn't serve.
 
-### 4. Set your Connect UID
+### 4. Set your Connect UID and fix Slack message visibility
 
-In `agent/channels/slack.ts`, replace the placeholder UID with the one from step 3:
+In `agent/channels/slack.ts`, replace the placeholder UID with the one from step 3.
+
+**Important:** Eve's default Slack adapter swallows intermediate text messages into a typing indicator when the model outputs text and then calls a tool (e.g. summarizes the page, then calls `ask_question`). This means users never see the agent's descriptions, live-view URLs, or any content before the buttons. Override the `message.completed` handler to always post:
 
 ```ts
+import { slackChannel } from "eve/channels/slack";
+import { connectSlackCredentials } from "@vercel/connect/eve";
+
 export default slackChannel({
   credentials: connectSlackCredentials("slack/<your-uid>"),
   threadContext: { since: "last-agent-reply" },
+  events: {
+    // The default handler swallows text into a typing indicator when the model
+    // outputs text and then calls a tool (finishReason === "tool-calls").
+    // Override to always post it so summaries and live-view URLs are visible.
+    async "message.completed"(data, channel) {
+      if (data.message) {
+        await channel.thread.post(data.message);
+      }
+    },
+  },
 });
 ```
+
+Without this override, users only see buttons with no context about what's on the page.
 
 ### 5. Deploy
 
@@ -134,6 +152,30 @@ If you'd rather not use the experimental Connect commands, set credentials via e
   ```
 
 - After deploying, set the Slack app's **Event Subscriptions → Request URL** to `https://<deployment>/eve/v1/slack` and subscribe to `app_mention`.
+
+## Troubleshooting
+
+### `[UNLOADABLE_DEPENDENCY]` error on deploy
+
+If `npx eve deploy` fails with an error referencing an absolute path like `.eve/dev-runtime/snapshots/.../compiled-artifacts-bootstrap.mjs`, the local dev cache is stale. Clear it and redeploy:
+
+```bash
+rm -rf .eve/dev-runtime
+npx eve deploy
+```
+
+### `KERNEL_API_KEY` missing during Vercel build
+
+Environment variables in `.env.local` are only used locally. For Vercel deployments, add them to the Vercel project:
+
+```bash
+npx vercel env add KERNEL_API_KEY production
+npx vercel env add ANTHROPIC_API_KEY production
+```
+
+### Agent shows buttons but no page summary in Slack
+
+See the `events` override in [step 4](#4-set-your-connect-uid-and-fix-slack-message-visibility). Eve's default Slack adapter buffers text as a typing indicator when the model calls a tool immediately after generating text — the override posts it instead.
 
 ## Notes
 
