@@ -10,7 +10,7 @@ export default defineTool({
     const { sessionId } = browser.get();
     if (!sessionId) throw new Error("No browser open. Call open_browser first.");
     const res = await kernel.browsers.playwright.execute(sessionId, {
-      code: "return { url: page.url(), snapshot: await page._snapshotForAI() };",
+      code: "return { url: page.url(), snapshot: await page.locator('body').ariaSnapshot() };",
     });
     if (!res.success) throw new Error(res.error ?? res.stderr ?? "snapshot failed");
     return res.result;

@@ -138,4 +138,4 @@ If you'd rather not use the experimental Connect commands, set credentials via e
 ## Notes
 
 - The Kernel `session_id` is stored with `defineState` (`agent/lib/kernel.ts`), which is durable and per-session, so the browser survives while the agent waits for input. `open_browser` is idempotent (reuses the existing session).
-- `read_page` uses `page._snapshotForAI()`. Binary data (screenshots, downloads) doesn't serialize through Playwright execution — capture those with Kernel's dedicated APIs if you need them.
+- `read_page` uses Playwright's public `ariaSnapshot()` to return the page's accessibility tree (roles, text, links). It's stable across both stealth (Patchright) and non-stealth browsers, unlike the internal `page._snapshotForAI()` which isn't present in stealth sessions. Binary data (screenshots, downloads) doesn't serialize through Playwright execution — capture those with Kernel's dedicated APIs if you need them.
