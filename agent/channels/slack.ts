@@ -1,10 +1,12 @@
 import { slackChannel } from "eve/channels/slack";
+import { connectSlackCredentials } from "@vercel/connect/eve";
 
-// Renders every ask_question / approval as Slack buttons and resumes the parked
-// session on click — no button wiring needed. By default it reads
-// SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET from the environment (classic Slack
-// app). To use Vercel Connect instead, see the README and pass
-// `credentials: connectSlackCredentials("slack/<uid>")`.
+// Credentials run through Vercel Connect — no bot token or signing secret in
+// code or env. Replace the UID with the one from `vercel connect create slack`
+// (see the README "Deploy to Slack" walkthrough). To use a classic Slack app
+// with SLACK_BOT_TOKEN / SLACK_SIGNING_SECRET env vars instead, drop the
+// credentials line and this import.
 export default slackChannel({
+  credentials: connectSlackCredentials("slack/kernel-eve-agent"),
   threadContext: { since: "last-agent-reply" },
 });

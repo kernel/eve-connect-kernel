@@ -70,65 +70,70 @@ curl -s -X POST http://127.0.0.1:2000/eve/v1/session/<sessionId> \
 
 `agent/channels/slack.ts` renders every `ask_question` and approval as native Slack buttons and resumes the session when you click — no button-wiring code. Slack delivers events to a public URL, so you deploy first (local `eve dev` on `127.0.0.1` isn't reachable by Slack).
 
-By default the channel reads `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` from the environment, so a classic Slack app works with no code changes.
+Credentials run through [Vercel Connect](https://vercel.com/docs/connect) (the path eve recommends): Connect provisions the Slack app, bot token, and webhook verification, so there's no token or signing secret in your code or env.
 
-### 1. Create a Slack app
-
-- [api.slack.com/apps](https://api.slack.com/apps) → **Create New App → From scratch**, pick your workspace.
-- **OAuth & Permissions → Bot Token Scopes**: add `app_mentions:read` and `chat:write`. Add `channels:history` (and `groups:history` for private channels) for thread context, and `im:history` for DMs.
-- **Install to Workspace** → copy the **Bot User OAuth Token** (`xoxb-…`).
-- **Basic Information → App Credentials** → copy the **Signing Secret**.
-
-### 2. Set environment variables (on your Vercel project)
-
-```
-KERNEL_API_KEY=…          # Kernel cloud browser
-ANTHROPIC_API_KEY=…       # model (or switch agent.ts to an AI Gateway slug)
-SLACK_BOT_TOKEN=xoxb-…
-SLACK_SIGNING_SECRET=…
-```
-
-### 3. Deploy
+### 1. Link the project
 
 ```bash
-npx eve deploy            # wraps `vercel deploy --prod` with the eve framework flag
+npx vercel link
 ```
 
-Copy the deployment URL.
+### 2. Set the model + browser env vars
 
-### 4. Point Slack at the deployment
+Connect only handles Slack; the agent still needs its model and browser keys on the Vercel project:
 
-- Slack app → **Event Subscriptions** → enable → **Request URL** = `https://<deployment>/eve/v1/slack` (Slack verifies it live).
-- **Subscribe to bot events**: `app_mention` (and `message.im` for DMs). Save; reinstall if prompted.
+```bash
+npx vercel env add KERNEL_API_KEY production      # Kernel cloud browser
+npx vercel env add ANTHROPIC_API_KEY production   # model (or switch agent.ts to an AI Gateway slug)
+```
 
-### 5. Test
-
-- Invite the bot to your channel: `/invite @your-app`.
-- `@your-app open https://example.com and walk me through it`.
-- It replies with buttons; click one and it performs that action, then posts fresh buttons from the new page. A `submit` action shows **Approve / Deny**. The live-view link lets you take over the browser directly.
-
-### Alternative: Vercel Connect (no tokens in env)
-
-Instead of steps 1–2 and 4, let [Vercel Connect](https://vercel.com/docs/connect) provision the Slack app, bot token, and webhook verification:
+### 3. Wire Slack through Connect
 
 ```bash
 npm i -g vercel@latest && export FF_CONNECT_ENABLED=1
-vercel connect create slack --triggers        # authorize the app; note the UID, e.g. slack/kernel-eve-agent
+vercel connect create slack --triggers    # authorize the Slack app in your workspace; copy the UID, e.g. slack/kernel-eve-agent
 vercel connect detach <uid> --yes
 vercel connect attach <uid> --triggers --trigger-path /eve/v1/slack --yes
 ```
 
-Then point `agent/channels/slack.ts` at it and deploy with `VERCEL_USE_EXPERIMENTAL_FRAMEWORKS=1 vercel deploy --prod`:
+`FF_CONNECT_ENABLED=1` turns on the (feature-flagged) Connect commands. `--triggers` enables Slack Event Subscriptions (`app_mention`, `message.im`). The `detach` + `attach --trigger-path /eve/v1/slack` re-points the webhook at eve's Slack route, which the default Connect path doesn't serve.
+
+### 4. Set your Connect UID
+
+In `agent/channels/slack.ts`, replace the placeholder UID with the one from step 3:
 
 ```ts
-import { slackChannel } from "eve/channels/slack";
-import { connectSlackCredentials } from "@vercel/connect/eve";
-
 export default slackChannel({
   credentials: connectSlackCredentials("slack/<your-uid>"),
   threadContext: { since: "last-agent-reply" },
 });
 ```
+
+### 5. Deploy
+
+```bash
+npx eve deploy            # wraps `vercel deploy --prod` with the eve framework flag
+```
+
+### 6. Test
+
+- Invite the bot to your channel: `/invite @your-app`.
+- `@your-app open https://example.com and walk me through it`.
+- It replies with buttons; click one and it performs that action, then posts fresh buttons from the new page. A `submit` action shows **Approve / Deny**. The live-view link lets you take over the browser directly.
+
+### Alternative: classic Slack app (no Connect CLI)
+
+If you'd rather not use the experimental Connect commands, set credentials via env vars instead:
+
+- Create a Slack app ([api.slack.com/apps](https://api.slack.com/apps)) with bot scopes `app_mentions:read`, `chat:write` (+ `channels:history` for thread context); install it and copy the **Bot User OAuth Token** and **Signing Secret**.
+- Set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` on the Vercel project (alongside `KERNEL_API_KEY` / `ANTHROPIC_API_KEY`), and change `agent/channels/slack.ts` to drop the Connect import:
+
+  ```ts
+  import { slackChannel } from "eve/channels/slack";
+  export default slackChannel({ threadContext: { since: "last-agent-reply" } });
+  ```
+
+- After deploying, set the Slack app's **Event Subscriptions → Request URL** to `https://<deployment>/eve/v1/slack` and subscribe to `app_mention`.
 
 ## Notes
 
