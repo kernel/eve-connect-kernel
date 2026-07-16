@@ -6,11 +6,14 @@ The browser tools aren't built here. They come from **[Kernel's hosted MCP serve
 
 ## How it works
 
-eve loads any file under `agent/connections/` as a connection. `agent/connections/kernel.ts` is a single `defineMcpClientConnection` pointing at `https://mcp.onkernel.com/mcp`; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__<tool>` via its `connection_search` tool. The three the agent uses:
+eve loads any file under `agent/connections/` as a connection. `agent/connections/kernel.ts` is a single `defineMcpClientConnection` pointing at `https://mcp.onkernel.com/mcp`; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__<tool>` via its `connection_search` tool. The ones the agent uses:
 
 - **`manage_browsers`** — create, list, get, and delete browser sessions. Returns a `session_id` and a `live_view_url` you can watch or take over.
 - **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type. Best for precise, deterministic steps.
 - **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session. Best for visual, coordinate-based interaction.
+- **`browser_curl`** — send HTTP requests through the browser session's network stack. Handy for hitting an API or fetching a resource without rendering a page.
+
+Those come from the `tools.allow` list in `agent/connections/kernel.ts`. Kernel's MCP server exposes more — browser profiles, managed auth, proxies, shell access, app management, and so on — so **add any of them to `tools.allow` as your agent needs them**. The list is kept tight by default to keep an autonomous agent's blast radius small; leave the destructive and account-management tools out unless you gate them behind an [approval policy](#optional-add-an-approval-gate).
 
 The agent loop lives in [`agent/instructions.md`](agent/instructions.md): open a browser, read the page, take the single best next action, re-read, and repeat — carrying the `session_id` across steps. It runs this loop itself and reports the outcome (with any extracted data and the live view URL) when it finishes or gets stuck. eve runs that whole read → act → observe loop inside one durable turn, so a single request can drive the browser through many steps.
 

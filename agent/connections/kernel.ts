@@ -15,9 +15,17 @@ export default defineMcpClientConnection({
   auth: {
     getToken: async () => ({ token: process.env.KERNEL_API_KEY! }),
   },
-  // Only the tools needed to open a browser and drive it end-to-end.
+  // The tools needed to open a browser and drive it end-to-end. Kernel's MCP
+  // exposes more (profiles, managed auth, shell, etc.) — add them here as your
+  // agent needs them. Leaving the destructive/account-management ones out keeps
+  // an autonomous agent's blast radius small.
   tools: {
-    allow: ["manage_browsers", "execute_playwright_code", "computer_action"],
+    allow: [
+      "manage_browsers",
+      "execute_playwright_code",
+      "computer_action",
+      "browser_curl",
+    ],
   },
   // No approval gate — the agent runs autonomously. To pause for a human before
   // irreversible actions, add e.g. `approval: once()` (from "eve/tools/approval")
