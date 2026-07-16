@@ -15,16 +15,19 @@ export default defineMcpClientConnection({
   auth: {
     getToken: async () => ({ token: process.env.KERNEL_API_KEY! }),
   },
-  // The tools needed to open a browser and drive it end-to-end. Kernel's MCP
-  // exposes more (profiles, managed auth, shell, etc.) — add them here as your
-  // agent needs them. Leaving the destructive/account-management ones out keeps
-  // an autonomous agent's blast radius small.
+  // The tools needed to open a browser, drive it end-to-end, and log into sites
+  // via Kernel's managed auth. Kernel's MCP exposes more (profiles, proxies,
+  // shell, app management, etc.) — add them here as your agent needs them.
+  // Leaving the destructive/account-management ones out keeps an autonomous
+  // agent's blast radius small.
   tools: {
     allow: [
       "manage_browsers",
       "execute_playwright_code",
       "computer_action",
       "browser_curl",
+      "manage_auth_connections",
+      "manage_credentials",
     ],
   },
   // No approval gate — the agent runs autonomously. To pause for a human before
