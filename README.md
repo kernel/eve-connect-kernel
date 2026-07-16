@@ -1,6 +1,6 @@
 # eve-browser-agent
 
-A [Vercel eve](https://vercel.com/eve) agent that drives a [Kernel](https://www.kernel.sh) cloud browser as a human-in-the-loop loop: it opens a browser, reads the page, and asks you what to do next as **buttons**. You pick one, it performs that single action, reads the new page, and asks again — repeating until you say you're done. State-changing actions ask for explicit approval first.
+A [Vercel eve](https://vercel.com/eve) agent that solves web tasks autonomously in a [Kernel](https://www.kernel.sh) cloud browser. Give it a goal — "find the cheapest direct flight from JFK to SFO next Friday", "sign up for this newsletter", "pull the pricing tiers off this site" — and it opens a browser, reads the page, decides the next move, acts, observes the result, and keeps iterating on its own until the task is done. It only stops to ask you when it's genuinely blocked (a login it can't complete, a captcha, an ambiguous instruction).
 
 The browser tools aren't built here. They come from **[Kernel's hosted MCP server](https://github.com/onkernel/kernel-mcp-server)**: one connection file points eve at Kernel and every browser tool — session management, Playwright execution, and human-like computer controls — shows up automatically. No custom tool code to write or maintain.
 
@@ -9,21 +9,20 @@ The browser tools aren't built here. They come from **[Kernel's hosted MCP serve
 eve loads any file under `agent/connections/` as a connection. `agent/connections/kernel.ts` is a single `defineMcpClientConnection` pointing at `https://mcp.onkernel.com/mcp`; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__<tool>` via its `connection_search` tool. The three the agent uses:
 
 - **`manage_browsers`** — create, list, get, and delete browser sessions. Returns a `session_id` and a `live_view_url` you can watch or take over.
-- **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type.
-- **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session.
+- **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type. Best for precise, deterministic steps.
+- **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session. Best for visual, coordinate-based interaction.
 
-Two things wrap those tools into a safe, watchable loop:
+The agent loop lives in [`agent/instructions.md`](agent/instructions.md): open a browser, read the page, take the single best next action, re-read, and repeat — carrying the `session_id` across steps. It runs this loop itself, giving itself a budget of ~20 actions per task, and reports the outcome (with any extracted data and the live view URL) when it finishes or gets stuck. eve runs that whole read → act → observe loop inside one durable turn, so a single request can drive the browser through many steps.
 
-- **The loop itself** lives in [`agent/instructions.md`](agent/instructions.md): after each action the agent summarizes the page, then calls eve's built-in `ask_question` with options built from the current page — which the Slack channel auto-renders as buttons — and waits.
-- **An approval gate** on the connection (`approval: once()`) asks for a human OK before the agent first takes control of the browser. The button loop keeps you choosing every step after that, and the instructions have the agent confirm before anything irreversible (a submit, send, or purchase).
+There's no approval gate on the connection — the agent acts on its own. To pause for a human before irreversible actions (a purchase, send, or delete), add an `approval` policy to the connection; see [Approval gates](#optional-add-an-approval-gate) below.
 
 ```
 agent/
   agent.ts               # model (defaults to the direct Anthropic provider)
-  instructions.md        # the ask -> act -> ask loop
+  instructions.md        # the read -> act -> observe loop and stop conditions
   connections/kernel.ts  # Kernel MCP connection — provides the browser tools
   channels/eve.ts        # default HTTP channel, locked to loopback
-  channels/slack.ts      # Slack channel — auto-renders HITL prompts as buttons
+  channels/slack.ts      # Slack channel — streams progress and renders any prompts as buttons
 ```
 
 ## Authentication, and the road to Vercel Connect
@@ -43,6 +42,21 @@ auth: connect("<connector-uid>"),
 ```
 
 At that point `KERNEL_API_KEY` goes away — Connect owns the token storage and refresh. Everything else in this repo stays the same.
+
+## Optional: add an approval gate
+
+The agent runs autonomously by default. If you want a human in the loop before it acts — say, on a channel where it might make purchases — gate the connection with an `approval` policy in `agent/connections/kernel.ts`:
+
+```ts
+import { once } from "eve/tools/approval";
+// ...
+export default defineMcpClientConnection({
+  // ...
+  approval: once(), // ask once per session before the agent controls the browser
+});
+```
+
+`once()` asks the first time per session, `always()` on every tool call, and a custom `({ toolName, toolInput }) => ...` policy lets you gate only the calls that matter (e.g. a form submit) by inspecting the tool input. eve renders the prompt as Slack buttons and resumes when you answer. See eve's [connection approval docs](https://vercel.com/eve/docs/connections) for the full policy shape.
 
 ## Prerequisites
 
@@ -64,22 +78,22 @@ The default eve HTTP channel needs no setup. Start the dev server:
 npm run dev            # eve dev — serves http://127.0.0.1:2000
 ```
 
-Start a session:
+Start a session with a task:
 
 ```bash
 curl -s -X POST http://127.0.0.1:2000/eve/v1/session \
   -H 'content-type: application/json' \
-  -d '{"message":"Open https://example.com and walk me through it, asking me what to do next."}'
+  -d '{"message":"Go to news.ycombinator.com and give me the top 5 stories with their points and links."}'
 # -> { "sessionId": "...", "continuationToken": "eve:..." }
 ```
 
-Watch the events (the agent opens a browser, reads the page, then parks at `input.requested` with your options):
+Watch it work (it opens a browser, reads pages, acts, and streams progress until it finishes with the answer):
 
 ```bash
 curl -N http://127.0.0.1:2000/eve/v1/session/<sessionId>/stream
 ```
 
-Answer a prompt to resume the loop — either the structured form:
+If the agent hits a blocker it parks at `input.requested` with a question. Answer it to resume — either the structured form:
 
 ```bash
 curl -s -X POST http://127.0.0.1:2000/eve/v1/session/<sessionId> \
@@ -87,11 +101,11 @@ curl -s -X POST http://127.0.0.1:2000/eve/v1/session/<sessionId> \
   -d '{"continuationToken":"eve:...","inputResponses":[{"requestId":"<id from input.requested>","optionId":"<option id>"}]}'
 ```
 
-…or just a plain follow-up message (`{"continuationToken":"...","message":"click the login link"}`), which matches against the option labels/ids.
+…or just a plain follow-up message (`{"continuationToken":"...","message":"I signed in, continue"}`).
 
 ## Deploy to Slack
 
-`agent/channels/slack.ts` renders every `ask_question` and approval as native Slack buttons and resumes the session when you click — no button-wiring code. Slack delivers events to a public URL, so you deploy first (local `eve dev` on `127.0.0.1` isn't reachable by Slack).
+`agent/channels/slack.ts` streams the agent's progress into a thread and renders any `ask_question` or approval prompt as native Slack buttons, resuming the session when you answer — no button-wiring code. Slack delivers events to a public URL, so you deploy first (local `eve dev` on `127.0.0.1` isn't reachable by Slack).
 
 Slack credentials run through [Vercel Connect](https://vercel.com/docs/connect) (the path eve recommends): Connect provisions the Slack app, bot token, and webhook verification, so there's no token or signing secret in your code or env.
 
@@ -125,7 +139,7 @@ vercel connect attach <uid> --triggers --trigger-path /eve/v1/slack --yes
 
 In `agent/channels/slack.ts`, replace the placeholder UID with the one from step 3.
 
-**Important:** Eve's default Slack adapter swallows intermediate text messages into a typing indicator when the model outputs text and then calls a tool (e.g. summarizes the page, then calls `ask_question`). This means users never see the agent's descriptions, live-view URLs, or any content before the buttons. Override the `message.completed` handler to always post:
+**Important:** Eve's default Slack adapter swallows intermediate text messages into a typing indicator when the model outputs text and then calls a tool (e.g. narrates what it's doing, then calls a browser tool). This means users never see the agent's progress or live-view URLs — only the final answer. Override the `message.completed` handler to always post so you can watch the agent work:
 
 ```ts
 import { slackChannel } from "eve/channels/slack";
@@ -147,7 +161,7 @@ export default slackChannel({
 });
 ```
 
-Without this override, users only see buttons with no context about what's on the page.
+Without this override, users see nothing until the agent posts its final result.
 
 ### 5. Deploy
 
@@ -158,8 +172,8 @@ npx eve deploy            # wraps `vercel deploy --prod` with the eve framework 
 ### 6. Test
 
 - Invite the bot to your channel: `/invite @your-app`.
-- `@your-app open https://example.com and walk me through it`.
-- It replies with buttons; click one and it performs that action, then posts fresh buttons from the new page. The first browser action shows an **Approve** prompt, and any irreversible step (submit, send, purchase) asks again. The live-view link lets you take over the browser directly.
+- `@your-app grab the top 5 posts on Hacker News right now with their points and links`.
+- It opens a browser, streams its progress as it works through the task, and posts the result. If it hits a blocker (a login, a captcha) it asks with buttons; otherwise it runs to completion on its own. The live-view link lets you watch or take over the browser directly.
 
 ### Alternative: classic Slack app (no Connect CLI)
 
@@ -199,11 +213,11 @@ npx vercel env add ANTHROPIC_API_KEY production
 
 Kernel's tools are discovered through eve's `connection_search`, keyed off the connection `description` in `agent/connections/kernel.ts`. If the model doesn't reach for them, make the description more specific, and confirm the tool names in `tools.allow` still match what the server publishes.
 
-### Agent shows buttons but no page summary in Slack
+### Agent posts nothing in Slack until it's finished
 
 See the `events` override in [step 4](#4-set-your-connect-uid-and-fix-slack-message-visibility). Eve's default Slack adapter buffers text as a typing indicator when the model calls a tool immediately after generating text — the override posts it instead.
 
 ## Notes
 
-- The Kernel `session_id` returned by `manage_browsers` (`create`) is the handle for the whole loop — the agent passes it to every `execute_playwright_code` and `computer_action` call and reuses it across turns, so the browser persists while the agent waits for input. If the id is ever lost, `manage_browsers` (`list`) recovers it. Set a generous `timeout_seconds` on create so the session doesn't expire while parked.
+- The Kernel `session_id` returned by `manage_browsers` (`create`) is the handle for the whole task — the agent passes it to every `execute_playwright_code` and `computer_action` call and reuses it across steps, so the browser persists for the life of the task. If the id is ever lost, `manage_browsers` (`list`) recovers it. Set a generous `timeout_seconds` on create so the session doesn't expire mid-task or while parked on a blocker.
 - `read`-style calls use Playwright's public `ariaSnapshot()` to return the page's accessibility tree (roles, text, links). It's stable across both stealth (Patchright) and non-stealth browsers, unlike the internal `page._snapshotForAI()` which isn't present in stealth sessions. For a visual read, use `computer_action` with a `screenshot`.
