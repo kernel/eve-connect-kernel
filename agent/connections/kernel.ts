@@ -6,10 +6,8 @@ import { defineMcpClientConnection } from "eve/connections";
 // and surfaces them to the model as `kernel__<tool>` via `connection_search`.
 //
 // Auth: Kernel's MCP treats a non-JWT bearer token as a Kernel API key, so we
-// hand it one from the environment. This stands in for Vercel Connect until
-// Kernel ships as a preset Connect connector — at that point swap `auth` for
-// `connect("<connector-uid>")` from "@vercel/connect/eve" and drop
-// KERNEL_API_KEY, and the token never touches the app or the model.
+// hand it one from the environment. `auth` is pluggable — swap `getToken` for
+// an OAuth-based provider if you'd rather not manage a static key.
 export default defineMcpClientConnection({
   url: "https://mcp.onkernel.com/mcp",
   description:

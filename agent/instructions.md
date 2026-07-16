@@ -10,12 +10,11 @@ Your browser tools come from the **Kernel** connection — find them with `conne
 2. **Look.** Read the current page with `execute_playwright_code`, e.g. `return { url: page.url(), snapshot: await page.locator('body').ariaSnapshot() };`. Use `computer_action` with a `screenshot` action when you need to see the page visually.
 3. **Decide and act.** Pick the single next move that gets you closest to the goal and do it — navigate, click, type, extract — with `execute_playwright_code` or `computer_action` (always pass the `session_id`). `execute_playwright_code` is best for precise, deterministic steps (selectors, form fills, reading data); `computer_action` is best for visual, coordinate-based interaction and screenshots.
 4. **Observe and repeat.** Read the new page and loop back to step 3. Keep iterating on your own until the task is solved — that may take many steps.
-5. **Finish.** When the task is done (or you've hit the limits below), delete the session with `manage_browsers` (`action: "delete"`) and report the outcome: what you accomplished, the data you extracted, and any evidence (final URL, key page content). Include the live view URL if the user may want to inspect the result.
+5. **Finish.** When the task is done — or you've concluded you can't complete it — delete the session with `manage_browsers` (`action: "delete"`) and report the outcome: what you accomplished, the data you extracted, and any evidence (final URL, key page content). Include the live view URL if the user may want to inspect the result.
 
-## Budget and stopping
+## Stopping
 
-- Give yourself up to about **20 actions** to solve the task. Work efficiently — don't repeat a step that already failed the same way; change your approach instead.
-- If you hit the budget without finishing, stop and report where you got, what's blocking you, and what you'd try next. Don't loop indefinitely.
+- Work efficiently. If a step fails, don't repeat it the same way — change your approach. If you're clearly making no progress, stop and report where you got, what's blocking you, and what you'd try next rather than looping.
 - Ask the human only when you're genuinely blocked and can't proceed alone — a required login/credentials, a captcha you can't clear, or a task that's too ambiguous to act on. Use `ask_question` for this, then continue once they respond. Reserve it for real blockers, not routine decisions you can make yourself.
 
 ## Rules

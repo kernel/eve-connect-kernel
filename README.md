@@ -12,7 +12,7 @@ eve loads any file under `agent/connections/` as a connection. `agent/connection
 - **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type. Best for precise, deterministic steps.
 - **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session. Best for visual, coordinate-based interaction.
 
-The agent loop lives in [`agent/instructions.md`](agent/instructions.md): open a browser, read the page, take the single best next action, re-read, and repeat — carrying the `session_id` across steps. It runs this loop itself, giving itself a budget of ~20 actions per task, and reports the outcome (with any extracted data and the live view URL) when it finishes or gets stuck. eve runs that whole read → act → observe loop inside one durable turn, so a single request can drive the browser through many steps.
+The agent loop lives in [`agent/instructions.md`](agent/instructions.md): open a browser, read the page, take the single best next action, re-read, and repeat — carrying the `session_id` across steps. It runs this loop itself and reports the outcome (with any extracted data and the live view URL) when it finishes or gets stuck. eve runs that whole read → act → observe loop inside one durable turn, so a single request can drive the browser through many steps.
 
 There's no approval gate on the connection — the agent acts on its own. To pause for a human before irreversible actions (a purchase, send, or delete), add an `approval` policy to the connection; see [Approval gates](#optional-add-an-approval-gate) below.
 
@@ -25,7 +25,7 @@ agent/
   channels/slack.ts      # Slack channel — streams progress and renders any prompts as buttons
 ```
 
-## Authentication, and the road to Vercel Connect
+## Authentication
 
 Kernel's MCP server treats a non-JWT bearer token as a Kernel API key, so the connection hands it `KERNEL_API_KEY` from the environment:
 
@@ -33,15 +33,7 @@ Kernel's MCP server treats a non-JWT bearer token as a Kernel API key, so the co
 auth: { getToken: async () => ({ token: process.env.KERNEL_API_KEY! }) }
 ```
 
-This is a stand-in for [Vercel Connect](https://vercel.com/docs/connect). Once Kernel is available as a preset Connect connector, swap the static token for Connect and the credential never touches the app or the model:
-
-```ts
-import { connect } from "@vercel/connect/eve";
-// ...
-auth: connect("<connector-uid>"),
-```
-
-At that point `KERNEL_API_KEY` goes away — Connect owns the token storage and refresh. Everything else in this repo stays the same.
+eve's connection `auth` is pluggable. If you'd rather not manage a static key, swap `getToken` for an OAuth-based auth provider so tokens are issued and refreshed out of band and never touch the app or the model — the rest of the connection stays the same. See eve's [connection auth docs](https://vercel.com/eve/docs/connections) for the provider shapes.
 
 ## Optional: add an approval gate
 
