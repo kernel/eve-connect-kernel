@@ -2,25 +2,47 @@
 
 A [Vercel eve](https://vercel.com/eve) agent that drives a [Kernel](https://www.kernel.sh) cloud browser as a human-in-the-loop loop: it opens a browser, reads the page, and asks you what to do next as **buttons**. You pick one, it performs that single action, reads the new page, and asks again — repeating until you say you're done. State-changing actions ask for explicit approval first.
 
-The loop is powered by eve's built-in `ask_question` tool (which the Slack channel auto-renders as buttons) plus an `approval`-gated `submit` tool. The Kernel browser session is held across turns with eve's durable `defineState`, so the browser persists while the agent waits for you — even across restarts.
+The browser tools aren't built here. They come from **[Kernel's hosted MCP server](https://github.com/onkernel/kernel-mcp-server)**: one connection file points eve at Kernel and every browser tool — session management, Playwright execution, and human-like computer controls — shows up automatically. No custom tool code to write or maintain.
 
 ## How it works
 
-- **`open_browser`** — creates (or reuses) a Kernel browser; returns the `session_id` and a `live_view_url` you can watch or take over.
-- **`read_page`** — returns a compact snapshot of the current page so the agent can propose real next steps.
-- **`act`** — runs Playwright in the browser (navigate, click, type, read).
-- **`submit`** — same, but `approval: always()` so it pauses for your approve/deny before running. Use for form submits, purchases, sends.
-- **`close_browser`** — deletes the session when the task is done.
-- The **loop itself** lives in `agent/instructions.md`: after each action the agent calls the built-in `ask_question` with dynamic options built from the current page, then waits.
+eve loads any file under `agent/connections/` as a connection. `agent/connections/kernel.ts` is a single `defineMcpClientConnection` pointing at `https://mcp.onkernel.com/mcp`; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__<tool>` via its `connection_search` tool. The three the agent uses:
+
+- **`manage_browsers`** — create, list, get, and delete browser sessions. Returns a `session_id` and a `live_view_url` you can watch or take over.
+- **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type.
+- **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session.
+
+Two things wrap those tools into a safe, watchable loop:
+
+- **The loop itself** lives in [`agent/instructions.md`](agent/instructions.md): after each action the agent summarizes the page, then calls eve's built-in `ask_question` with options built from the current page — which the Slack channel auto-renders as buttons — and waits.
+- **An approval gate** on the connection (`approval: once()`) asks for a human OK before the agent first takes control of the browser. The button loop keeps you choosing every step after that, and the instructions have the agent confirm before anything irreversible (a submit, send, or purchase).
 
 ```
 agent/
-  agent.ts            # model (defaults to the direct Anthropic provider)
-  instructions.md     # the ask -> act -> ask loop
-  lib/kernel.ts       # Kernel client + durable browser-session state
-  tools/              # open_browser, read_page, act, submit, close_browser
-  channels/slack.ts   # Slack channel — auto-renders HITL prompts as buttons
+  agent.ts               # model (defaults to the direct Anthropic provider)
+  instructions.md        # the ask -> act -> ask loop
+  connections/kernel.ts  # Kernel MCP connection — provides the browser tools
+  channels/eve.ts        # default HTTP channel, locked to loopback
+  channels/slack.ts      # Slack channel — auto-renders HITL prompts as buttons
 ```
+
+## Authentication, and the road to Vercel Connect
+
+Kernel's MCP server treats a non-JWT bearer token as a Kernel API key, so the connection hands it `KERNEL_API_KEY` from the environment:
+
+```ts
+auth: { getToken: async () => ({ token: process.env.KERNEL_API_KEY! }) }
+```
+
+This is a stand-in for [Vercel Connect](https://vercel.com/docs/connect). Once Kernel is available as a preset Connect connector, swap the static token for Connect and the credential never touches the app or the model:
+
+```ts
+import { connect } from "@vercel/connect/eve";
+// ...
+auth: connect("<connector-uid>"),
+```
+
+At that point `KERNEL_API_KEY` goes away — Connect owns the token storage and refresh. Everything else in this repo stays the same.
 
 ## Prerequisites
 
@@ -71,7 +93,7 @@ curl -s -X POST http://127.0.0.1:2000/eve/v1/session/<sessionId> \
 
 `agent/channels/slack.ts` renders every `ask_question` and approval as native Slack buttons and resumes the session when you click — no button-wiring code. Slack delivers events to a public URL, so you deploy first (local `eve dev` on `127.0.0.1` isn't reachable by Slack).
 
-Credentials run through [Vercel Connect](https://vercel.com/docs/connect) (the path eve recommends): Connect provisions the Slack app, bot token, and webhook verification, so there's no token or signing secret in your code or env.
+Slack credentials run through [Vercel Connect](https://vercel.com/docs/connect) (the path eve recommends): Connect provisions the Slack app, bot token, and webhook verification, so there's no token or signing secret in your code or env.
 
 ### 1. Link the project
 
@@ -81,10 +103,10 @@ npx vercel link
 
 ### 2. Set the model + browser env vars
 
-Connect only handles Slack; the agent still needs its model and browser keys on the Vercel project:
+Connect handles Slack; the agent still needs its model and browser keys on the Vercel project:
 
 ```bash
-npx vercel env add KERNEL_API_KEY production      # Kernel cloud browser
+npx vercel env add KERNEL_API_KEY production      # Kernel cloud browser (bearer token for the MCP connection)
 npx vercel env add ANTHROPIC_API_KEY production   # model (or switch agent.ts to an AI Gateway slug)
 ```
 
@@ -137,7 +159,7 @@ npx eve deploy            # wraps `vercel deploy --prod` with the eve framework 
 
 - Invite the bot to your channel: `/invite @your-app`.
 - `@your-app open https://example.com and walk me through it`.
-- It replies with buttons; click one and it performs that action, then posts fresh buttons from the new page. A `submit` action shows **Approve / Deny**. The live-view link lets you take over the browser directly.
+- It replies with buttons; click one and it performs that action, then posts fresh buttons from the new page. The first browser action shows an **Approve** prompt, and any irreversible step (submit, send, purchase) asks again. The live-view link lets you take over the browser directly.
 
 ### Alternative: classic Slack app (no Connect CLI)
 
@@ -173,11 +195,15 @@ npx vercel env add KERNEL_API_KEY production
 npx vercel env add ANTHROPIC_API_KEY production
 ```
 
+### The model can't find the browser tools
+
+Kernel's tools are discovered through eve's `connection_search`, keyed off the connection `description` in `agent/connections/kernel.ts`. If the model doesn't reach for them, make the description more specific, and confirm the tool names in `tools.allow` still match what the server publishes.
+
 ### Agent shows buttons but no page summary in Slack
 
 See the `events` override in [step 4](#4-set-your-connect-uid-and-fix-slack-message-visibility). Eve's default Slack adapter buffers text as a typing indicator when the model calls a tool immediately after generating text — the override posts it instead.
 
 ## Notes
 
-- The Kernel `session_id` is stored with `defineState` (`agent/lib/kernel.ts`), which is durable and per-session, so the browser survives while the agent waits for input. `open_browser` is idempotent (reuses the existing session).
-- `read_page` uses Playwright's public `ariaSnapshot()` to return the page's accessibility tree (roles, text, links). It's stable across both stealth (Patchright) and non-stealth browsers, unlike the internal `page._snapshotForAI()` which isn't present in stealth sessions. Binary data (screenshots, downloads) doesn't serialize through Playwright execution — capture those with Kernel's dedicated APIs if you need them.
+- The Kernel `session_id` returned by `manage_browsers` (`create`) is the handle for the whole loop — the agent passes it to every `execute_playwright_code` and `computer_action` call and reuses it across turns, so the browser persists while the agent waits for input. If the id is ever lost, `manage_browsers` (`list`) recovers it. Set a generous `timeout_seconds` on create so the session doesn't expire while parked.
+- `read`-style calls use Playwright's public `ariaSnapshot()` to return the page's accessibility tree (roles, text, links). It's stable across both stealth (Patchright) and non-stealth browsers, unlike the internal `page._snapshotForAI()` which isn't present in stealth sessions. For a visual read, use `computer_action` with a `screenshot`.
