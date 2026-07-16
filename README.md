@@ -22,7 +22,7 @@ There's no approval gate on the connection — the agent acts on its own. To pau
 
 ```
 agent/
-  agent.ts               # model (defaults to the direct Anthropic provider)
+  agent.ts               # model (routed through the Vercel AI Gateway)
   instructions.md        # the read -> act -> observe loop and stop conditions
   connections/kernel.ts  # Kernel MCP connection — provides the browser tools
   channels/eve.ts        # default HTTP channel, locked to loopback
@@ -59,7 +59,7 @@ export default defineMcpClientConnection({
 - **Node 24+** — if you see `npm warn EBADENGINE` during install, your Node version is too old. The agent may still run on Node 22, but Node 24+ is required. Upgrade with `nvm install 24 && nvm use 24` or `brew install node@24`.
 - **Vercel CLI** — `npm i -g vercel@latest` (needed for local dev and deployment)
 - **`KERNEL_API_KEY`** — a Kernel API key (https://www.kernel.sh)
-- A model key — **`ANTHROPIC_API_KEY`** for the default direct provider (or set `AI_GATEWAY_API_KEY` and switch `agent/agent.ts` to a Vercel AI Gateway model slug)
+- **`AI_GATEWAY_API_KEY`** — routes the model through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (the default). Letting the gateway resolve the model's context window is also what keeps eve's auto-compaction firing at the right threshold. To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
 
 ```bash
 npm install
@@ -117,7 +117,7 @@ Connect handles Slack; the agent still needs its model and browser keys on the V
 
 ```bash
 npx vercel env add KERNEL_API_KEY production      # Kernel cloud browser (bearer token for the MCP connection)
-npx vercel env add ANTHROPIC_API_KEY production   # model (or switch agent.ts to an AI Gateway slug)
+npx vercel env add AI_GATEWAY_API_KEY production  # model via the Vercel AI Gateway
 ```
 
 ### 3. Wire Slack through Connect
@@ -176,7 +176,7 @@ npx eve deploy            # wraps `vercel deploy --prod` with the eve framework 
 If you'd rather not use the experimental Connect commands, set credentials via env vars instead:
 
 - Create a Slack app ([api.slack.com/apps](https://api.slack.com/apps)) with bot scopes `app_mentions:read`, `chat:write` (+ `channels:history` for thread context); install it and copy the **Bot User OAuth Token** and **Signing Secret**.
-- Set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` on the Vercel project (alongside `KERNEL_API_KEY` / `ANTHROPIC_API_KEY`), and change `agent/channels/slack.ts` to drop the Connect import:
+- Set `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET` on the Vercel project (alongside `KERNEL_API_KEY` / `AI_GATEWAY_API_KEY`), and change `agent/channels/slack.ts` to drop the Connect import:
 
   ```ts
   import { slackChannel } from "eve/channels/slack";
@@ -202,7 +202,7 @@ Environment variables in `.env.local` are only used locally. For Vercel deployme
 
 ```bash
 npx vercel env add KERNEL_API_KEY production
-npx vercel env add ANTHROPIC_API_KEY production
+npx vercel env add AI_GATEWAY_API_KEY production
 ```
 
 ### The model can't find the browser tools
@@ -217,4 +217,3 @@ See the `events` override in [step 4](#4-set-your-connect-uid-and-fix-slack-mess
 
 - The Kernel `session_id` returned by `manage_browsers` (`create`) is the handle for the browser — the agent passes it to every `execute_playwright_code` and `computer_action` call and reuses it across steps and across tasks, so the browser stays alive for follow-ups until you end it or it times out. If the id is ever lost, `manage_browsers` (`list`) recovers it. Set a generous `timeout_seconds` on create so the session doesn't expire mid-task, while parked on a blocker, or between requests.
 - `read`-style calls use Playwright's public `ariaSnapshot()` to return the page's accessibility tree (roles, text, links). It's stable across both stealth (Patchright) and non-stealth browsers, unlike the internal `page._snapshotForAI()` which isn't present in stealth sessions. For a visual read, use `computer_action` with a `screenshot`.
-- **Mind the context window.** Because the agent works a task inside a single durable turn, every page snapshot and screenshot it takes stays in context for the whole task — and eve's compaction only summarizes *older turns*, so it can't reclaim space mid-task. Whole-page `ariaSnapshot()` reads and full-page screenshots are the usual cause of a `prompt is too long` error. The instructions steer the agent to read narrowly (scope the snapshot, extract only what's needed), screenshot sparingly, and delegate long multi-step browsing to a subagent (the built-in `agent` tool) so that churn stays out of the main context. For very long jobs, delegation is the reliable bound.
