@@ -59,7 +59,7 @@ export default defineMcpClientConnection({
 - **Node 24+** — if you see `npm warn EBADENGINE` during install, your Node version is too old. The agent may still run on Node 22, but Node 24+ is required. Upgrade with `nvm install 24 && nvm use 24` or `brew install node@24`.
 - **Vercel CLI** — `npm i -g vercel@latest` (needed for local dev and deployment)
 - **`KERNEL_API_KEY`** — a Kernel API key (https://www.kernel.sh)
-- **`AI_GATEWAY_API_KEY`** — routes the model through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (the default). Letting the gateway resolve the model's context window is also what keeps eve's auto-compaction firing at the right threshold. To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
+- **`AI_GATEWAY_API_KEY`** — routes the model through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (the default). To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
 
 ```bash
 npm install
