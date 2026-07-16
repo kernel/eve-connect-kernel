@@ -1,4 +1,5 @@
 import { defineMcpClientConnection } from "eve/connections";
+import { once } from "eve/tools/approval";
 
 // Kernel's hosted MCP server exposes the whole cloud-browser toolset — session
 // management, Playwright execution, and human-like computer controls — so this
@@ -17,11 +18,12 @@ export default defineMcpClientConnection({
   auth: {
     getToken: async () => ({ token: process.env.KERNEL_API_KEY! }),
   },
-  // Only the tools needed to open a browser and drive it end-to-end.
+  // Only the tools needed to open a browser and drive it for a human.
   tools: {
     allow: ["manage_browsers", "execute_playwright_code", "computer_action"],
   },
-  // No approval gate — the agent runs autonomously. To pause for a human before
-  // irreversible actions, add e.g. `approval: once()` (from "eve/tools/approval")
-  // or a custom policy that inspects the tool input.
+  // Ask once per session before the agent takes control of the browser. After
+  // that the per-step button loop (see instructions.md) keeps the human
+  // choosing every action, and irreversible steps get their own confirmation.
+  approval: once(),
 });
