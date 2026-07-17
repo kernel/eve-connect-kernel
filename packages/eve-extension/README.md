@@ -36,14 +36,14 @@ Get an API key at [dashboard.onkernel.com/api-keys](https://dashboard.onkernel.c
 
 `kernel({ ... })` accepts:
 
-| Option   | Default                         | Purpose                                                              |
-| -------- | ------------------------------- | ------------------------------------------------------------------- |
-| `apiKey` | — (required for static-key auth) | Kernel API key, sent as the bearer token for the MCP connection.    |
-| `mcpUrl` | `https://mcp.onkernel.com/mcp`  | Override the Kernel MCP endpoint.                                    |
+| Option   | Default                        | Purpose                                                          |
+| -------- | ------------------------------ | --------------------------------------------------------------- |
+| `apiKey` | required                       | Kernel API key, sent as the bearer token for the MCP connection. |
+| `mcpUrl` | `https://mcp.onkernel.com/mcp` | Override the Kernel MCP endpoint.                                |
 
 ## Auth: static key or Vercel Connect
 
-By default the connection uses a static `KERNEL_API_KEY`. Since Kernel is a [Vercel Connect](https://vercel.com/connect) preset connector, you can instead let Connect issue and refresh OAuth tokens out of band — so no key touches your app, env, or the model. Leave `apiKey` unset and override the connection's `auth` with a Connect provider (see [Overrides](#overriding-the-connection)).
+By default the connection uses a static `KERNEL_API_KEY`. Since Kernel is a [Vercel Connect](https://vercel.com/connect) preset connector, you can instead let Connect issue and refresh OAuth tokens out of band — so no key touches your app, env, or the model. Override the connection's `auth` with a Connect provider (see [Overrides](#overriding-the-connection)).
 
 ## Overriding the connection
 
