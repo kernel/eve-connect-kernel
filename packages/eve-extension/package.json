@@ -1,0 +1,38 @@
+{
+  "name": "@onkernel/eve",
+  "version": "0.1.0",
+  "description": "Kernel cloud browser extension for Vercel eve agents — mount one line and get session management, Playwright execution, and human-like computer controls as kernel__* tools.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://www.kernel.sh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kernel/eve-extension.git"
+  },
+  "eve": {
+    "extension": "./extension"
+  },
+  "files": [
+    "extension",
+    "dist"
+  ],
+  "scripts": {
+    "build": "eve extension build",
+    "prepare": "eve extension build",
+    "typecheck": "tsc"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "peerDependencies": {
+    "eve": "^0.20.0"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "eve": "^0.20.0",
+    "typescript": "^6.0.3"
+  }
+}
