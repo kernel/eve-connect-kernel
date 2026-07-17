@@ -10,29 +10,41 @@
     "url": "https://github.com/kernel/eve-extension.git"
   },
   "eve": {
-    "extension": "./extension"
+    "extension": {
+      "source": "./extension",
+      "dist": "./dist/extension"
+    }
   },
   "files": [
-    "extension",
     "dist"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./tools": {
+      "types": "./dist/tools/index.d.ts",
+      "default": "./dist/tools/index.mjs"
+    }
+  },
   "scripts": {
     "build": "eve extension build",
     "prepare": "eve extension build",
     "typecheck": "tsc"
   },
   "engines": {
-    "node": ">=24"
-  },
-  "peerDependencies": {
-    "eve": "^0.20.0"
+    "node": "24.x"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
-    "eve": "^0.20.0",
-    "typescript": "^6.0.3"
+    "@types/node": "24.x",
+    "eve": "^0.25.1",
+    "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "eve": "*"
   }
 }

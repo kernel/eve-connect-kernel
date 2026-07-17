@@ -84,7 +84,7 @@ export default defineMcpClientConnection({
 
 - **Node 24+**
 - A **Kernel API key** (or a Vercel Connect Kernel connector)
-- **eve `^0.20.0`** as a peer dependency in the consuming agent
+- **eve** in the consuming agent — the extension keeps `eve` as a wildcard peer so the consumer's installed eve is the one that runs
 
 ## Develop
 

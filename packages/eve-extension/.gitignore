@@ -1,4 +1,9 @@
 node_modules
-dist
-*.tsbuildinfo
+.env*
 .eve
+.vercel
+.output
+.nitro
+dist
+.DS_Store
+*.tsbuildinfo
