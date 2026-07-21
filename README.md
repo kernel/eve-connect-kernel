@@ -36,7 +36,7 @@ The browser connection authenticates through Vercel Connect — no `KERNEL_API_K
 ```ts
 import kernel from "@onkernel/eve-extension";
 
-export default kernel({ connect: "mcp.onkernel.com/eve-connect-kernel" });
+export default kernel({ connect: "mcp.onkernel.com/eve-extension" });
 ```
 
 The first time a user drives the browser, eve surfaces a one-time Connect consent prompt. They approve once and it's cached across threads and sessions. Each user acts as themselves — which is exactly what you want when the agent is about to log into *their* accounts.
@@ -56,12 +56,12 @@ Setting up auth is the one step only a person can do. The agent starts the login
 
 ### Dev flow (eve TUI)
 
-**1. Install and create the Kernel connector** (name it `eve-connect-kernel` so the mount above works unedited):
+**1. Install and create the Kernel connector** (name it `eve-extension` so the mount above works unedited):
 
 ```bash
 npm install
-vercel connect create mcp.onkernel.com --name eve-connect-kernel
-vercel connect attach mcp.onkernel.com/eve-connect-kernel
+vercel connect create mcp.onkernel.com --name eve-extension
+vercel connect attach mcp.onkernel.com/eve-extension
 ```
 
 **2. Set the model key:**
