@@ -2,19 +2,19 @@
 
 A [Vercel eve](https://vercel.com/eve) agent that solves web tasks autonomously in a [Kernel](https://www.kernel.sh) cloud browser. Give it a goal — "find the cheapest direct flight from JFK to SFO next Friday", "sign up for this newsletter", "pull the pricing tiers off this site" — and it opens a browser, reads the page, decides the next move, acts, observes the result, and keeps iterating on its own until the task is done. It only stops to ask you when it's genuinely blocked (a login it can't complete, a captcha, an ambiguous instruction).
 
-The browser tools aren't built here. They come from **[Kernel's hosted MCP server](https://github.com/onkernel/kernel-mcp-server)**: one connection file points eve at Kernel and every browser tool — session management, Playwright execution, and human-like computer controls — shows up automatically. No custom tool code to write or maintain.
+The browser tools aren't built here. They come from the **[`@onkernel/eve-extension`](https://github.com/kernel/eve-extension)** package: mount it in one line and every browser tool — session management, Playwright execution, and human-like computer controls — plus a `browse` skill show up automatically. No custom tool code to write or maintain.
 
 ## How it works
 
-eve loads any file under `agent/connections/` as a connection. `agent/connections/kernel.ts` is a single `defineMcpClientConnection` pointing at `https://mcp.onkernel.com/mcp`; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__<tool>` via its `connection_search` tool. The ones the agent uses:
+eve loads any file under `agent/extensions/` as an extension. `agent/extensions/kernel.ts` mounts `@onkernel/eve-extension`, which packages a single MCP connection to Kernel's hosted server; eve discovers Kernel's tools at runtime and exposes them to the model as `kernel__browser__<tool>` via its `connection_search` tool. The ones the agent uses:
 
 - **`manage_browsers`** — create, list, get, and delete browser sessions. Returns a `session_id` and a `live_view_url` you can watch or take over.
 - **`execute_playwright_code`** — run Playwright against the live page to read, navigate, click, or type. Best for precise, deterministic steps.
 - **`computer_action`** — human-like mouse, keyboard, and screenshot controls for the same session. Best for visual, coordinate-based interaction.
-- **`browser_curl`** — send HTTP requests through the browser session's network stack. Handy for hitting an API or fetching a resource without rendering a page.
-- **`manage_auth_connections`** + **`manage_credentials`** — Kernel's managed auth. When a site needs a login, the agent authenticates through these (reusing a stored connection, or launching a hosted login flow for the user to complete) instead of typing credentials into the page.
+- **`manage_auth_connections`** — Kernel's managed auth. When a site needs a login, the agent authenticates through it (reusing a stored connection, or launching a hosted login flow for the user to complete) instead of typing credentials into the page.
+- the **`browse`** skill — the read → act → observe loop the model follows to drive the browser end-to-end.
 
-Those come from the `tools.allow` list in `agent/connections/kernel.ts`. Kernel's MCP server exposes more — browser profiles, proxies, shell access, app management, and so on — so **add any of them to `tools.allow` as your agent needs them**. The list is kept tight by default to keep an autonomous agent's blast radius small; leave the destructive and account-management tools out unless you gate them behind an [approval policy](#optional-add-an-approval-gate).
+The extension also ships `manage_profiles` (persistent cookies/logins) and `manage_proxies` (geo-targeted proxies) in the default mount. Higher-blast-radius tools — `browser_curl`, `manage_credentials`, `exec_command`, `manage_browser_pools` — are off by default to keep an autonomous agent's blast radius small; add them (and any approval gate) with a [connection override](#optional-widen-the-toolset-or-add-an-approval-gate).
 
 The agent loop lives in [`agent/instructions.md`](agent/instructions.md): open a browser, read the page, take the single best next action, re-read, and repeat — carrying the `session_id` across steps. It runs this loop itself and reports the outcome (with any extracted data and the live view URL) when it finishes or gets stuck. eve runs that whole read → act → observe loop inside one durable turn, so a single request can drive the browser through many steps. It leaves the browser session open after a task so a follow-up request continues in the same browser; the session is deleted only when you ask it to end, or it expires on its own inactivity timeout.
 
@@ -24,41 +24,73 @@ There's no approval gate on the connection — the agent acts on its own. To pau
 agent/
   agent.ts               # model (routed through the Vercel AI Gateway)
   instructions.md        # the read -> act -> observe loop and stop conditions
-  connections/kernel.ts  # Kernel MCP connection — provides the browser tools
+  extensions/kernel.ts   # mounts @onkernel/eve-extension — provides the browser tools
   channels/eve.ts        # default HTTP channel, locked to loopback
   channels/slack.ts      # Slack channel — streams progress and renders any prompts as buttons
 ```
 
 ## Authentication
 
-Kernel's MCP server treats a non-JWT bearer token as a Kernel API key, so the connection hands it `KERNEL_API_KEY` from the environment:
+The browser connection authenticates through **[Vercel Connect](https://vercel.com/connect)** — no API key touches your app, env, or the model, and each user authenticates as themselves with a one-time consent that's cached afterward. The mount passes the Connect connector UID:
 
 ```ts
-auth: { getToken: async () => ({ token: process.env.KERNEL_API_KEY! }) }
+// agent/extensions/kernel.ts
+import kernel from "@onkernel/eve-extension";
+
+export default kernel({ connect: "mcp.onkernel.com/eve-extension" });
 ```
 
-eve's connection `auth` is pluggable. If you'd rather not manage a static key, swap `getToken` for an OAuth-based auth provider so tokens are issued and refreshed out of band and never touch the app or the model — the rest of the connection stays the same. See eve's [connection auth docs](https://vercel.com/eve/docs/connections) for the provider shapes.
+Create the connector once (name it `eve-extension` so the snippet above works unedited):
 
-## Optional: add an approval gate
+```bash
+vercel connect create mcp.onkernel.com --name eve-extension
+vercel connect attach mcp.onkernel.com/eve-extension
+```
 
-The agent runs autonomously by default. If you want a human in the loop before it acts — say, on a channel where it might make purchases — gate the connection with an `approval` policy in `agent/connections/kernel.ts`:
+(or add it from the Vercel dashboard → Connectors → "Browse all" → Kernel; confirm the UID with `vercel connect list`). Leave `KERNEL_API_KEY` unset — the first time a user drives the browser, eve surfaces a Connect consent prompt they approve once, and the grant persists across threads and sessions. Each user acts as themselves, a good fit for Kernel's per-user managed auth.
+
+Prefer a single shared key instead? Mount `export { default } from "@onkernel/eve-extension";` and set `KERNEL_API_KEY` in the environment. See the [extension README](https://github.com/kernel/eve-extension) for the API-key path.
+
+## Optional: widen the toolset or add an approval gate
+
+The agent runs autonomously with the extension's default toolset. To widen the allowlist (e.g. add `browser_curl` or `manage_credentials`) or put a human in the loop before it acts, shadow the extension's connection. Mount as a directory and name the connection file `browser.ts`:
+
+```
+agent/extensions/kernel/
+  extension.ts             # export default kernel({ connect: "mcp.onkernel.com/eve-extension" })
+  connections/browser.ts   # shadows the extension's "browser" connection
+```
 
 ```ts
+// agent/extensions/kernel/connections/browser.ts
+import { defineMcpClientConnection } from "eve/connections";
+import { connect } from "@vercel/connect/eve";
 import { once } from "eve/tools/approval";
-// ...
+
 export default defineMcpClientConnection({
-  // ...
+  url: "https://mcp.onkernel.com/mcp",
+  description: "Kernel cloud browser.",
+  auth: connect("mcp.onkernel.com/eve-extension"),
+  tools: {
+    allow: [
+      "manage_browsers",
+      "execute_playwright_code",
+      "computer_action",
+      "manage_auth_connections",
+      "browser_curl", // high blast radius — raw HTTP through the session
+    ],
+  },
   approval: once(), // ask once per session before the agent controls the browser
 });
 ```
 
-`once()` asks the first time per session, `always()` on every tool call, and a custom `({ toolName, toolInput }) => ...` policy lets you gate only the calls that matter (e.g. a form submit) by inspecting the tool input. eve renders the prompt as Slack buttons and resumes when you answer. See eve's [connection approval docs](https://vercel.com/eve/docs/connections) for the full policy shape.
+`once()` asks the first time per session, `always()` on every tool call, and a custom `({ toolName, toolInput }) => ...` policy lets you gate only the calls that matter (e.g. a form submit) by inspecting the tool input. eve renders the prompt as Slack buttons and resumes when you answer.
 
 ## Prerequisites
 
 - **Node 24+** — if you see `npm warn EBADENGINE` during install, your Node version is too old. The agent may still run on Node 22, but Node 24+ is required. Upgrade with `nvm install 24 && nvm use 24` or `brew install node@24`.
-- **Vercel CLI** — `npm i -g vercel@latest` (needed for local dev and deployment)
-- **`KERNEL_API_KEY`** — a Kernel API key (https://www.kernel.sh)
+- **Vercel CLI** — `npm i -g vercel@latest` (needed for local dev, deployment, and the Connect connector)
+- **A Kernel Vercel Connect connector** — set up once with `vercel connect create mcp.onkernel.com --name eve-extension && vercel connect attach mcp.onkernel.com/eve-extension` (see [Authentication](#authentication)). No API key required.
 - **`AI_GATEWAY_API_KEY`** — routes the model through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (the default). To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
 
 ```bash
@@ -111,12 +143,11 @@ Slack credentials run through [Vercel Connect](https://vercel.com/docs/connect) 
 npx vercel link
 ```
 
-### 2. Set the model + browser env vars
+### 2. Set the model env var
 
-Connect handles Slack; the agent still needs its model and browser keys on the Vercel project:
+Connect handles Slack and the Kernel browser; the agent still needs its model key on the Vercel project:
 
 ```bash
-npx vercel env add KERNEL_API_KEY production      # Kernel cloud browser (bearer token for the MCP connection)
 npx vercel env add AI_GATEWAY_API_KEY production  # model via the Vercel AI Gateway
 ```
 
@@ -196,18 +227,21 @@ rm -rf .eve/dev-runtime
 npx eve deploy
 ```
 
-### `KERNEL_API_KEY` missing during Vercel build
+### `AI_GATEWAY_API_KEY` missing during Vercel build
 
 Environment variables in `.env.local` are only used locally. For Vercel deployments, add them to the Vercel project:
 
 ```bash
-npx vercel env add KERNEL_API_KEY production
 npx vercel env add AI_GATEWAY_API_KEY production
 ```
 
+### The browser connection isn't authorized
+
+The extension authenticates through Vercel Connect. If the agent can't drive the browser, confirm the connector exists and is attached (`vercel connect list` should show `mcp.onkernel.com/eve-extension`), and that the connector UID in `agent/extensions/kernel.ts` matches. The first browser call per user surfaces a one-time Connect consent prompt — approve it to grant access.
+
 ### The model can't find the browser tools
 
-Kernel's tools are discovered through eve's `connection_search`, keyed off the connection `description` in `agent/connections/kernel.ts`. If the model doesn't reach for them, make the description more specific, and confirm the tool names in `tools.allow` still match what the server publishes.
+Kernel's tools are discovered through eve's `connection_search`, and the extension needs **eve `>= 0.25`** — older eve silently ignores `agent/extensions/` (you'll see a "discover/unsupported-directory" warning and nothing mounts). Confirm your installed `eve` version, then check the tool names against what the server publishes via `connection_search`.
 
 ### Agent posts nothing in Slack until it's finished
 

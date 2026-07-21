@@ -16,9 +16,10 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@onkernel/eve-extension": "^0.1.2",
     "@vercel/connect": "^0.3.2",
     "ai": "^7.0.16",
-    "eve": "^0.20.0",
+    "eve": "^0.26.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
