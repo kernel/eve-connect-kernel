@@ -24,7 +24,7 @@ When it's ambiguous, ask which site and whether they want to authenticate or run
 
 ## Set up managed auth
 
-1. **Pick the profile.** Default to a **new** profile unless the user names an existing one to reuse. Name it from the domain (e.g. `github`, `github-work`). Create it with `manage_profiles` (`action: "setup"`); pass `update_existing: true` only when reusing a named profile.
+1. **Pick the profile.** Default to a **new** profile unless the user names an existing one to reuse. Name it after the person who asked plus a date stamp — `<user>_<MMYYYY>`, e.g. `danny_072026` — so profiles don't collide across people or days. Create it with `manage_profiles` (`action: "setup"`); pass `update_existing: true` only when reusing a named profile.
 2. **Create the connection.** `manage_auth_connections` (`action: "create"`) with `profile_name` and `domain`. Pass `login_url` if you already know the sign-in page; leave credential fields unset for a hosted human login.
 3. **Start the login flow.** `manage_auth_connections` (`action: "login"`) returns a `hosted_url` and a `live_view_url`. Hand the `hosted_url` to the user with `ask_question` and ask them to sign in and clear any MFA/SSO there; share the `live_view_url` so they can watch or take over. Do not type raw credentials into pages yourself.
 4. **Advance the flow.** Poll with `manage_auth_connections` (`action: "get"`). If it's awaiting input, look at `discovered_fields` / `mfa_options` and `submit` what's needed (e.g. an MFA option); otherwise wait for the user to finish. Keep going until the connection reports authenticated.
