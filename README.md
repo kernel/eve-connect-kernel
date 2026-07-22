@@ -1,6 +1,6 @@
 # Eve + Vercel Connect + Kernel
 
-A cookbook for building a [Vercel eve](https://vercel.com/eve) agent that works on **authenticated** websites — logging a user in through a real, human-in-the-loop flow, then driving the signed-in browser to finish the task. Authentication runs through [Vercel Connect](https://vercel.com/connect), so there's **no API key** in your app or env: each user authenticates as themselves, once.
+A cookbook for building a [Vercel eve](https://eve.dev) agent that works on **authenticated** websites — logging a user in through a real, human-in-the-loop flow, then driving the signed-in browser to finish the task. Authentication runs through [Vercel Connect](https://vercel.com/connect), so there's **no API key** in your app or env: each user authenticates as themselves, once.
 
 ---
 
@@ -8,9 +8,9 @@ A cookbook for building a [Vercel eve](https://vercel.com/eve) agent that works 
 
 This cookbook uses:
 
-- [Vercel eve](https://vercel.com/eve) — the framework for building durable agents.
+- [Vercel eve](https://eve.dev) — the framework for building durable agents.
 - [Vercel Connect](https://vercel.com/connect) — brokers a per-user token to Kernel, so no shared API key touches your app, env, or the model.
-- [`@onkernel/eve-extension`](https://github.com/kernel/eve-extension) — one-line mount that gives the agent Kernel's browser toolset (sessions, Playwright, computer use) plus managed auth and profiles.
+- [`@onkernel/eve-extension`](https://github.com/kernel/eve-extension) — one-line mount that gives the agent Kernel's browser toolset (sessions, Playwright, computer use, session replays) plus managed auth and profiles.
 - [Kernel](https://www.kernel.sh) — fast cloud browsers for agents, with **managed auth**: a hosted login flow that gets a user signed in (MFA/SSO included) and keeps the session fresh.
 
 The agent's behavior lives in [`agent/instructions.md`](./agent/instructions.md). It has two jobs, which map to the two recipes below.
@@ -130,4 +130,4 @@ See [`docs/at-a-glance.md`](./docs/at-a-glance.md) for a file-by-file walkthroug
 ## Learn more
 
 - [Kernel managed auth](https://www.kernel.sh/docs) · [Kernel eve extension](https://github.com/kernel/eve-extension)
-- [Vercel eve](https://vercel.com/eve) · [Vercel Connect](https://vercel.com/connect)
+- [Vercel eve](https://eve.dev) · [Vercel Connect](https://vercel.com/connect)
