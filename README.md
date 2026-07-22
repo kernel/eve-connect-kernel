@@ -118,7 +118,8 @@ npx eve deploy
 ```
 agent/
   agent.ts               # model (routed through the Vercel AI Gateway)
-  instructions.md        # the two recipes: set up managed auth, drive an authed task
+  instructions.md        # base: how to act on the open web with Kernel (stealth, proxies, logins)
+  skills/kernel-auth.md  # prescriptive: the managed-auth hosted-login flow, step by step
   extensions/kernel.ts   # mounts @onkernel/eve-extension — Kernel browser tools via Connect
   channels/eve.ts        # local HTTP channel, locked to loopback
   channels/slack.ts      # Slack channel — streams progress, renders the sign-in handoff as a button
