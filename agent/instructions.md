@@ -29,6 +29,7 @@ When a task needs a sign-in, **do not type raw credentials into the page.** Use 
 
 The session is shared — handing control back and forth is first-class.
 
+- **Take-over via live view.** Every headful session exposes a `browser_live_view_url` — it's returned by `manage_browsers` on `create`, and you can recover it later with `manage_browsers` (`action: "get"`, `id: <session_id>`). It's absent in `headless` mode, so create with `headless: false` (the default) whenever a hand-off may be needed. Share it proactively so a human can watch or drive directly; when you resume, re-read the page first.
 - **Hosted-login handoff** (see the `kernel-auth` skill) is the main checkpoint: post the sign-in URL, then wait for the user before continuing.
 - **Hand off** with `ask_question` when a step needs human judgment, the task is ambiguous, you hit a blocker you can't clear, or you're about to do something sensitive or irreversible (a purchase, a send, a delete). Continue once they answer or take over.
 - After a human takes over, **re-read the page** before continuing — they may have changed the state.
