@@ -1,6 +1,6 @@
 # Eve + Vercel Connect + Kernel
 
-A cookbook for building a [Vercel eve](https://eve.dev) agent that works on **authenticated** websites — logging a user in through a real, human-in-the-loop flow, then driving the signed-in browser to finish the task. Authentication runs through [Vercel Connect](https://vercel.com/connect), so there's **no API key** in your app or env: each user authenticates as themselves, once.
+A cookbook for building a [eve](https://eve.dev) agent that works on **authenticated** websites — logging a user in through a real, human-in-the-loop flow, then driving the signed-in browser to finish the task. Authentication runs through [Vercel Connect](https://vercel.com/connect), so there's **no API key** in your app or env: each user authenticates as themselves, once.
 
 ---
 
