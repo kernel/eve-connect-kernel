@@ -20,7 +20,7 @@ eve-connect-kernel/
 
 You can understand the whole thing by reading that tree:
 
-* `instructions.md` tells the agent who it is and how to act on the open web with Kernel — the browse loop, staying unblocked (stealth → proxies), and when to reach for a login.
+* `instructions.md` tells the agent who it is and how to act on the open web with Kernel — the browse loop, using stealth for real sites, and when to reach for a login.
 * [`agent.ts`](https://eve.dev/docs/agent-config) chooses the model and configures runtime options (here, the Vercel AI Gateway).
 * [`extensions/kernel.ts`](https://github.com/kernel/eve-extension) mounts `@onkernel/eve-extension`, which gives the agent Kernel's browser toolset — sessions, Playwright, computer use, profiles, and managed auth — authenticated per-user through [Vercel Connect](https://vercel.com/connect), so there's no API key in the app.
 * [`skills/`](https://eve.dev/docs/skills) holds longer procedures the model loads only when useful. `kernel-auth.md` is the step-by-step managed-auth flow — set up a connection, run the human-in-the-loop hosted login, reuse the authenticated profile.

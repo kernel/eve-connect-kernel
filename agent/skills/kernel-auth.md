@@ -18,7 +18,7 @@ Before setting anything up, check for a connection that's already authenticated 
 
 ## 2. Pick the profile
 
-Default to a **new** profile unless the user names one to reuse. Name it after the person who asked plus a date stamp — `<user>_<MMYYYY>`, e.g. `danny_072026` — so profiles don't collide across people or days. Create it with `manage_profiles` (`action: "setup"`); pass `update_existing: true` only when deliberately reusing a named profile.
+Default to a **new** profile unless the user names one to reuse. Name it after the person who asked plus a date stamp — `<user>_<MMYYYY>`, e.g. `alex_072026` — so profiles don't collide across people or days. Create it with `manage_profiles` (`action: "setup"`); pass `update_existing: true` only when deliberately reusing a named profile.
 
 ## 3. Create the connection
 
