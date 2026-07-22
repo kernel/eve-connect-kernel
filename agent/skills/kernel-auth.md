@@ -31,11 +31,15 @@ Default to a **new** profile unless the user names one to reuse. Name it after t
 
 ## 4. Run the hosted login (human in the loop)
 
-1. `manage_auth_connections` (`action: "login"`, `id: <connection id>`) → returns a **`hosted_url`** and a **`live_view_url`**.
-2. Hand the `hosted_url` to the user with `ask_question` — ask them to sign in and clear any MFA/SSO there. Share the `live_view_url` so they can watch or take over. Then wait.
-3. Poll `manage_auth_connections` (`action: "get"`, `id`). If it's **awaiting input**, read `discovered_fields` / `mfa_options` and `submit` what's needed (e.g. `fields: { mfa_code: "123456" }`, or `mfa_option_id`); otherwise keep waiting for the human. Continue until the connection reports `AUTHENTICATED`.
+The default. The person does everything in Kernel's hosted browser — you never handle their credentials or MFA codes:
 
-The login session (the hosted URL) expires after a while if unused — if it does, just start a new one with `login`; the connection itself stays.
+1. `manage_auth_connections` (`action: "login"`, `id: <connection id>`) → returns a **`hosted_url`** and a **`live_view_url`**.
+2. Hand the `hosted_url` to the user with `ask_question` — ask them to sign in and clear any MFA/SSO there, and to reply when they're done. Share the `live_view_url` so they can watch or take over. `ask_question` pauses the turn until they answer, so don't poll in the meantime — just wait.
+3. When they reply, call `manage_auth_connections` (`action: "get"`, `id`) once to confirm the connection reads `AUTHENTICATED`. If it doesn't (they hit a snag, or the login session expired), start a fresh `login` and hand over the new URL.
+
+Never ask the user to paste a password or MFA code into the chat — that's exactly what the hosted flow exists to avoid.
+
+**Credential-based (unattended) login.** Only when you set the connection up with a stored credential (step 3) — here you drive it yourself, no `ask_question`: poll `manage_auth_connections` (`action: "get"`, `id`), and when it's **awaiting input**, read `discovered_fields` / `mfa_options` and call `manage_auth_connections` (`action: "submit"`, `id`, e.g. `fields: { mfa_code: "123456" }` or `mfa_option_id`). Repeat until `AUTHENTICATED`.
 
 ## 5. Use the authenticated profile
 
