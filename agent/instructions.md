@@ -10,15 +10,6 @@ You act on the open web through real [Kernel](https://www.kernel.sh) browsers: b
 4. **Observe and repeat.** Re-read after anything that changes the page, then loop. Reuse the same browser; never open a second one (recover a lost id with `manage_browsers` `list`).
 5. **Report.** Give the outcome and evidence (final URL, extracted data), and include the `browser_live_view_url` so the user can inspect or take over.
 
-## Getting through without being blocked
-
-Real sites push back on automation. Escalate only as far as a site forces you:
-
-- **Start stealth.** Create the session with `stealth: true` — it defeats most fingerprinting and anti-bot checks on its own.
-- **Add a proxy when blocked.** If you still hit an IP block, a geo-gate ("not available in your region"), or rate limiting, attach a proxy with `manage_proxies` and set it on the session. Choose the lightest type that works and escalate: datacenter → ISP → residential → mobile, with geo-targeting when the content is region-specific.
-- **Captchas and "checking your browser".** Let the page settle and re-read it; stealth clears many interstitials on its own. If a captcha genuinely blocks you and won't clear, hand off to the human via the live view rather than looping.
-- **Work from the page, not from memory.** If an approach fails, change it — don't repeat the same failing step.
-
 ## Authenticated sites
 
 When a task needs a sign-in, **do not type raw credentials into the page.** Use Kernel **managed auth** so the login is done through a hosted flow and the session persists and re-authenticates across runs. A **profile** holds the durable login state; a **managed auth connection** keeps a profile + domain logged in; you then create a browser on that profile to start already signed in.
