@@ -125,6 +125,8 @@ agent/
   channels/slack.ts      # Slack channel — streams progress, renders the sign-in handoff as a button
 ```
 
+See [`docs/at-a-glance.md`](./docs/at-a-glance.md) for a file-by-file walkthrough.
+
 ## Learn more
 
 - [Kernel managed auth](https://www.kernel.sh/docs) · [Kernel eve extension](https://github.com/kernel/eve-extension)
