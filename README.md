@@ -25,7 +25,7 @@ The agent's behavior lives in [`agent/instructions.md`](./agent/instructions.md)
 - **Node.js 24+**.
 - **A [Vercel](https://vercel.com) account + CLI** (`npm i -g vercel@latest`) — for the Connect connector, local dev, and deploy.
 - **A [Kernel](https://www.kernel.sh) account** — no API key needed; you authorize Kernel once through Connect below.
-- **`AI_GATEWAY_API_KEY`** — routes the model through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway). To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
+- **A model credential.** The default model runs through the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), which `vercel link` authenticates for you via a `VERCEL_OIDC_TOKEN` — so once the project is linked (below), there's nothing to set. Not linking? Put `AI_GATEWAY_API_KEY` in `.env.local`. To use a provider SDK directly instead, switch `agent/agent.ts` and set that provider's key (e.g. `ANTHROPIC_API_KEY`).
 
 ## How it works
 
@@ -58,9 +58,8 @@ Setting up auth is the one step only a person can do. The agent starts the login
 
 ```bash
 npm install
-npx vercel link              # link the Vercel project Connect attaches to
+npx vercel link              # links the project — also authenticates the AI Gateway via OIDC
 npm run connect:kernel       # create + attach the Kernel connector (one time)
-cp .env.example .env.local   # then set AI_GATEWAY_API_KEY
 npm run dev                  # opens the interactive TUI
 ```
 
@@ -78,12 +77,11 @@ Deployed, the agent streams its progress into a Slack thread and renders the sig
 ```bash
 npm i -g vercel@latest
 npx vercel link
-npm run connect:slack                        # provision the Slack app + point its webhook at eve
-npx vercel env add AI_GATEWAY_API_KEY production
+npm run connect:slack        # provision the Slack app + point its webhook at eve
 npm run deploy
 ```
 
-`connect:slack` creates the `slack/eve-connect-kernel` connector — the UID already wired into [`agent/channels/slack.ts`](./agent/channels/slack.ts) — then re-points its webhook at eve's `/eve/v1/slack` route. Connect provisions the app, bot token, scopes, and webhook verification, so no secrets touch your env and there's no UID to paste by hand.
+`connect:slack` creates the `slack/eve-connect-kernel` connector — the UID already wired into [`agent/channels/slack.ts`](./agent/channels/slack.ts) — then re-points its webhook at eve's `/eve/v1/slack` route. Connect provisions the app, bot token, scopes, and webhook verification, so no secrets touch your env and there's no UID to paste by hand. The linked deploy carries the same OIDC token, so the model needs no key either.
 
 Then invite the bot (`/invite @your-app`) and message it: `@your-app log me into github.com`. It streams progress, drops the sign-in button when it needs you, and finishes the task on its own — with a live-view link so you can watch or take over.
 
