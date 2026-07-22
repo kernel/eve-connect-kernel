@@ -39,7 +39,7 @@ The login session (the hosted URL) expires after a while if unused — if it doe
 
 ## 5. Use the authenticated profile
 
-`manage_browsers` (`action: "create"`) with `profile_name` set (`stealth: true` for real sites, a generous `timeout_seconds`). It starts already signed in. **Don't set `save_profile_changes`** — managed auth owns the profile's login state, so the task session reads from it but shouldn't write back over it. Confirm you're actually in (read the page); if you hit a login wall, the connection needs re-auth — run step 4 again, then retry.
+`manage_browsers` (`action: "create"`) with `profile_name` set (`stealth: true` for real sites, `timeout_seconds` of at least `600` so a hosted-login or hand-off wait doesn't expire the session). It starts already signed in. **Don't set `save_profile_changes`** — managed auth owns the profile's login state, so the task session reads from it but shouldn't write back over it. Confirm you're actually in (read the page); if you hit a login wall, the connection needs re-auth — run step 4 again, then retry.
 
 ## Staying logged in
 

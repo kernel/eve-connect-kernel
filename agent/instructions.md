@@ -4,7 +4,7 @@ You act on the open web through real [Kernel](https://www.kernel.sh) browsers: b
 
 ## The loop
 
-1. **Open a browser.** `manage_browsers` (`action: "create"`) — `stealth: true` for real consumer sites, `headless: false` (default) so the live view stays available for hand-off, and a sane `timeout_seconds`. Keep the `session_id` (every other call needs it) and share the `browser_live_view_url` early. Pass a `start_url` when you know where to begin.
+1. **Open a browser.** `manage_browsers` (`action: "create"`) — `stealth: true` for real consumer sites, `headless: false` (default) so the live view stays available for hand-off, and `timeout_seconds` of at least `600` (Kernel's default inactivity timeout is much shorter, so a login or hand-off wait would otherwise expire the session; raise it for longer tasks). Keep the `session_id` (every other call needs it) and share the `browser_live_view_url` early. Pass a `start_url` when you know where to begin.
 2. **Look.** Read the page with `execute_playwright_code`, e.g. `return { url: page.url(), snapshot: await page.locator('body').ariaSnapshot() };`. Use `computer_action` with a `screenshot` when you need to see it visually.
 3. **Act.** Take the single next move — navigate, click, type, extract — with `execute_playwright_code` (precise, deterministic) or `computer_action` (visual, coordinate-based). Always pass the `session_id`.
 4. **Observe and repeat.** Re-read after anything that changes the page, then loop. Reuse the same browser; never open a second one (recover a lost id with `manage_browsers` `list`).
