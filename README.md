@@ -56,27 +56,15 @@ Setting up auth is the one step only a person can do. The agent starts the login
 
 ### Dev flow (eve TUI)
 
-**1. Install and create the Kernel connector** (name it `eve-extension` so the mount above works unedited):
-
 ```bash
 npm install
-vercel connect create mcp.onkernel.com --name eve-extension
-vercel connect attach mcp.onkernel.com/eve-extension
+npx vercel link              # link the Vercel project Connect attaches to
+npm run connect:kernel       # create + attach the Kernel connector (one time)
+cp .env.example .env.local   # then set AI_GATEWAY_API_KEY
+npm run dev                  # opens the interactive TUI
 ```
 
-**2. Set the model key:**
-
-```bash
-cp .env.example .env.local   # then fill in AI_GATEWAY_API_KEY
-```
-
-**3. Start the agent** — `eve dev` opens the interactive TUI where you chat with the agent and watch it work:
-
-```bash
-npx eve dev
-```
-
-**4. Run the recipes.** Type a task and watch the loop:
+`connect:kernel` provisions the `mcp.onkernel.com/eve-extension` connector the mount points at, so no key ever touches your app or env. Then, in the TUI:
 
 - `Log me into github.com` → the agent posts a hosted login link; you sign in and clear MFA, and it saves the profile.
 - `Using my github profile, summarize my last 5 notifications` → it opens a browser already signed in and reports back with the live-view URL.
@@ -85,33 +73,19 @@ The first browser action triggers the one-time Connect consent prompt; approve i
 
 ### Deploy flow (Slack)
 
-Deployed, the agent streams its progress into a Slack thread and renders the sign-in handoff as a native button — the human-in-the-loop moment, one tap away.
-
-**1. Link the project and set the model key:**
+Deployed, the agent streams its progress into a Slack thread and renders the sign-in handoff as a native button — the human-in-the-loop moment, one tap away. Slack needs a public URL, so this path is deploy-only.
 
 ```bash
+npm i -g vercel@latest
 npx vercel link
+npm run connect:slack                        # provision the Slack app + point its webhook at eve
 npx vercel env add AI_GATEWAY_API_KEY production
+npm run deploy
 ```
 
-**2. Wire Slack through Connect** (Connect provisions the Slack app, bot token, and webhook — no secrets in your env):
+`connect:slack` creates the `slack/eve-connect-kernel` connector — the UID already wired into [`agent/channels/slack.ts`](./agent/channels/slack.ts) — then re-points its webhook at eve's `/eve/v1/slack` route. Connect provisions the app, bot token, scopes, and webhook verification, so no secrets touch your env and there's no UID to paste by hand.
 
-```bash
-npm i -g vercel@latest && export FF_CONNECT_ENABLED=1
-vercel connect create slack --triggers            # authorize the app; copy the UID, e.g. slack/eve-connect-kernel
-vercel connect detach <uid> --yes
-vercel connect attach <uid> --triggers --trigger-path /eve/v1/slack --yes
-```
-
-Set that UID in [`agent/channels/slack.ts`](./agent/channels/slack.ts).
-
-**3. Deploy:**
-
-```bash
-npx eve deploy
-```
-
-**4. Use it.** Invite the bot (`/invite @your-app`) and message it: `@your-app log me into github.com`. It streams progress, drops the sign-in button when it needs you, and finishes the task on its own — with a live-view link so you can watch or take over.
+Then invite the bot (`/invite @your-app`) and message it: `@your-app log me into github.com`. It streams progress, drops the sign-in button when it needs you, and finishes the task on its own — with a live-view link so you can watch or take over.
 
 ## Project layout
 
