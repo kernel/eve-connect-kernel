@@ -18,7 +18,7 @@ The agent's behavior lives in [`agent/instructions.md`](./agent/instructions.md)
 ### Recipes
 
 - **Set up managed auth (human-in-the-loop).** "Log me into `github.com`." The agent opens Kernel's hosted login flow, hands you the link, and waits while you sign in and clear MFA — then saves the session to a reusable profile that re-authenticates on its own.
-- **Drive an authenticated task.** "Using my GitHub profile, summarize my last 5 notifications." The agent opens a browser already signed in on that profile and works the task end-to-end, only stopping if it hits a genuine blocker.
+- **Drive an authenticated task.** "Using my GitHub profile, go to github.com/explore and tell me 3 things it's showing based on my interests." The agent opens a browser already signed in on that profile and works the task end-to-end, only stopping if it hits a genuine blocker.
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ npm run dev                  # opens the interactive TUI
 `connect:kernel` provisions the `mcp.onkernel.com/eve-extension` connector the mount points at, so no key ever touches your app or env. Then, in the TUI:
 
 - `Log me into github.com` → the agent posts a hosted login link; you sign in and clear MFA, and it saves the profile.
-- `Using my github profile, summarize my last 5 notifications` → it opens a browser already signed in and reports back with the live-view URL.
+- `Using my github profile, go to github.com/explore and tell me 3 things it's showing based on my interests` → it opens a browser already signed in and reports back with the live-view URL.
 
 The first browser action triggers the one-time Connect consent prompt; approve it and you won't see it again.
 
