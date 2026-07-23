@@ -100,4 +100,4 @@ agent/
 ## Learn more
 
 - [Kernel managed auth](https://www.kernel.sh/docs) · [Kernel eve extension](https://github.com/kernel/eve-extension)
-- [Vercel eve](https://eve.dev) · [Vercel Connect](https://vercel.com/connect)
+- [eve](https://eve.dev) · [Vercel Connect](https://vercel.com/connect)
