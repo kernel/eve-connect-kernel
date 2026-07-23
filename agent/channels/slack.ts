@@ -2,7 +2,7 @@ import { slackChannel } from "eve/channels/slack";
 import { connectSlackCredentials } from "@vercel/connect/eve";
 
 export default slackChannel({
-  credentials: connectSlackCredentials("slack/kernel-eve-agent"),
+  credentials: connectSlackCredentials("slack/eve-connect-kernel"),
   threadContext: { since: "last-agent-reply" },
   events: {
     // The default handler swallows text into a typing indicator when the model
