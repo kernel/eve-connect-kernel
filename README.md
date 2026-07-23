@@ -8,7 +8,7 @@ A cookbook for building a [eve](https://eve.dev) agent that works on **authentic
 
 This cookbook uses:
 
-- [Vercel eve](https://eve.dev) — the framework for building durable agents.
+- [eve](https://eve.dev) — the framework for building durable agents.
 - [Vercel Connect](https://vercel.com/connect) — brokers a per-user token to Kernel, so no shared API key touches your app, env, or the model.
 - [`@onkernel/eve-extension`](https://github.com/kernel/eve-extension) — one-line mount that gives the agent Kernel's browser toolset (sessions, Playwright, computer use, session replays) plus managed auth and profiles.
 - [Kernel](https://www.kernel.sh) — fast cloud browsers for agents, with **managed auth**: a hosted login flow that gets a user signed in (MFA/SSO included) and keeps the session fresh.
