@@ -9,13 +9,6 @@ Kernel manages logins for you: a **profile** stores durable login state, a **man
 
 > This is the eve/MCP version of Kernel's [`kernel-auth` skill](https://www.skills.sh/kernel/skills/kernel-auth) (source: [github.com/kernel/skills](https://github.com/kernel/skills)). That one drives the `kernel` CLI; here you use the extension's `manage_auth_connections`, `manage_profiles`, and `manage_browsers` tools. See Kernel's [managed auth docs](https://www.kernel.sh/docs) for the canonical reference.
 
-## Safe defaults
-
-- **Reuse before you create.** One connection per domain + profile — check `list` first (step 1) and don't stack duplicates.
-- **References, not raw secrets.** Drive unattended logins from a stored Kernel credential; never put a password or MFA code into a page, a tool argument, or the chat.
-- **Treat the login URLs as sensitive.** `hosted_url` and `live_view_url` grant access to the flow — hand them to the user directly, don't route them through link-previewing clients.
-- **Clean up browsers, keep auth state.** Delete temporary browser sessions when done; leave the profile and connection in place for reuse.
-
 ## 1. Reuse an existing login first
 
 Before setting anything up, check for a connection that's already authenticated for the domain:
@@ -46,7 +39,7 @@ A connection's `domain` and `profile_name` are fixed at creation and there's no 
 
 The default. The person does everything in Kernel's hosted browser — you never handle their credentials or MFA codes:
 
-1. `manage_auth_connections` (`action: "login"`, `id: <connection id>`) → returns a **`hosted_url`**, a **`live_view_url`**, and an expiry for the flow. Treat these URLs as sensitive.
+1. `manage_auth_connections` (`action: "login"`, `id: <connection id>`) → returns a **`hosted_url`**, a **`live_view_url`**, and an expiry for the flow.
 2. Hand the `hosted_url` to the user with `ask_question` — ask them to sign in and clear any MFA/SSO there, and to reply when they're done. Share the `live_view_url` so they can watch or take over. `ask_question` pauses the turn until they answer, so don't poll in the meantime — just wait.
 3. When they reply, call `manage_auth_connections` (`action: "get"`, `id`) once to confirm the connection reads `AUTHENTICATED`. If it doesn't (they hit a snag, or the login flow expired), just start a fresh `login` to supersede the stale flow and hand over the new URL — **don't** delete the connection or profile to "reset."
 
