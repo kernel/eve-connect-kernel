@@ -29,6 +29,7 @@ Default to a **new** profile unless the user names one to reuse. Name it after t
 - `login_url` *(optional)* — the sign-in page, if you already know it (skips discovery).
 - `allowed_domains` *(optional)* — extra domains the flow is allowed to touch. Common SSO providers (Google, Microsoft, Okta, Auth0, Apple, GitHub, Facebook, LinkedIn, Cognito, OneLogin, Ping) are allowed automatically; add this only for a site's non-standard redirect domain.
 - `proxy_id` *(optional, preferred)* or `proxy_name` — route the auth flow through a proxy. Prefer `proxy_id` for a stable, unambiguous reference.
+- For an **unattended** login from credentials a human pre-stored in Kernel, pass `credential_name` (or `credential_provider` + `credential_path`, or `credential_auto: true`). Leave these unset for a **human hosted login** (the default, and the right call when you don't hold the credentials).
 
 A connection's `domain` and `profile_name` are fixed at creation and there's no `update` action here — to change either, create a new connection.
 
@@ -42,13 +43,15 @@ The default. The person does everything in Kernel's hosted browser — you never
 
 Never ask the user to paste a password or MFA code into the chat — that's exactly what the hosted flow exists to avoid.
 
+**Credential-based (unattended) login.** Only when you set the connection up with a stored credential (step 3) — here you drive it yourself, no `ask_question`: poll `manage_auth_connections` (`action: "get"`, `id`), and when it's **awaiting input**, read `discovered_fields` / `mfa_options` and call `manage_auth_connections` (`action: "submit"`, `id`, e.g. `fields: { mfa_code: "123456" }` or `mfa_option_id`). Repeat until `AUTHENTICATED`.
+
 ## 5. Use the authenticated profile
 
 `manage_browsers` (`action: "create"`) with `profile_name` set (`stealth: true` for real sites, `timeout_seconds` of at least `600` so a hosted-login or hand-off wait doesn't expire the session). It starts already signed in. **Don't set `save_profile_changes`** — managed auth owns the profile's login state, so the task session reads from it but shouldn't write back over it. Confirm you're actually in (read the page); if you hit a login wall, the connection needs re-auth — run step 4 again, then retry.
 
 ## Staying logged in
 
-The connection keeps the profile signed in, so future runs start authenticated without repeating the hosted login. You only re-run the hosted login (step 4) when a connection goes `NEEDS_AUTH` — e.g. the site forced a full re-login. The profile and connection persist across sessions; deleting a browser doesn't remove them.
+The connection re-authenticates on its own on a `health_check_interval`, so future runs start authenticated without a human. You only re-run the hosted login (step 4) when a connection goes `NEEDS_AUTH` and can't recover — e.g. the site forced a full re-login. The profile and connection persist across sessions; deleting a browser doesn't remove them.
 
 ## Cleanup
 
@@ -58,6 +61,6 @@ The connection keeps the profile signed in, so future runs start authenticated w
 
 ## Safety
 
-- Never type raw credentials into a page — always go through the hosted flow.
+- Never type raw credentials into a page — always go through the hosted flow or pre-stored Kernel credentials.
 - Don't read back, log, or exfiltrate credential values or MFA secrets.
 - Confirm with the user before any sensitive or irreversible action taken while signed in (a purchase, a send, a delete).
