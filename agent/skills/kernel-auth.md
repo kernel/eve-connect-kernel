@@ -29,9 +29,6 @@ Default to a **new** profile unless the user names one to reuse. Name it after t
 - `login_url` *(optional)* — the sign-in page, if you already know it (skips discovery).
 - `allowed_domains` *(optional)* — extra domains the flow is allowed to touch. Common SSO providers (Google, Microsoft, Okta, Auth0, Apple, GitHub, Facebook, LinkedIn, Cognito, OneLogin, Ping) are allowed automatically; add this only for a site's non-standard redirect domain.
 - `proxy_id` *(optional, preferred)* or `proxy_name` — route the auth flow through a proxy. Prefer `proxy_id` for a stable, unambiguous reference.
-- **Credentials (for unattended login).** Pass a stored Kernel credential so Kernel can log in without a human: `credential_name`, **or** `credential_provider` with either `credential_auto: true` (provider looks the item up by domain) or `credential_path` (a specific item). Use `credential_name` *or* `credential_provider`, not both. Leave all of these unset for a **human hosted login** (the default, and the right call when you don't hold the credentials).
-- `save_credentials` *(default `true`)* — keep this on so a successful login is saved and the connection can re-authenticate unattended later. Setting it `false` usually blocks unattended re-auth.
-- `health_check_interval` *(optional)* — seconds between automatic re-auth checks. Health checks and auto re-auth are on by default server-side; the interval defaults to about an hour, the minimum is plan-dependent, and the max is `86400`.
 
 A connection's `domain` and `profile_name` are fixed at creation and there's no `update` action here — to change either, create a new connection.
 
@@ -45,17 +42,13 @@ The default. The person does everything in Kernel's hosted browser — you never
 
 Never ask the user to paste a password or MFA code into the chat — that's exactly what the hosted flow exists to avoid.
 
-**Credential-based (unattended) login.** Only when you set the connection up with a stored credential (step 3) — here you drive it yourself, no `ask_question`: poll `manage_auth_connections` (`action: "get"`, `id`), and when it's **awaiting input**, read `discovered_fields` / `mfa_options` and call `manage_auth_connections` (`action: "submit"`, `id`, e.g. `fields: { mfa_code: "123456" }`, `mfa_option_id`, or `sso_button_selector`). A successful `submit` only means the input was accepted for processing — not that login is done. Keep polling `get` until the connection reads `AUTHENTICATED`; repeat submits as new input is requested.
-
 ## 5. Use the authenticated profile
 
 `manage_browsers` (`action: "create"`) with `profile_name` set (`stealth: true` for real sites, `timeout_seconds` of at least `600` so a hosted-login or hand-off wait doesn't expire the session). It starts already signed in. **Don't set `save_profile_changes`** — managed auth owns the profile's login state, so the task session reads from it but shouldn't write back over it. Confirm you're actually in (read the page); if you hit a login wall, the connection needs re-auth — run step 4 again, then retry.
 
 ## Staying logged in
 
-The connection re-authenticates on its own on its `health_check_interval`, so future runs start authenticated without a human. You only re-run the hosted login (step 4) when a connection goes `NEEDS_AUTH` and can't recover — e.g. the site forced a full re-login. The profile and connection persist across sessions; deleting a browser doesn't remove them.
-
-Don't judge re-auth readiness from status alone. Read the connection with `manage_auth_connections` (`action: "get"`, `id`) and check the re-auth fields it reports (whether it can re-auth, and the reason if it can't). A connection can read `AUTHENTICATED` yet still be unable to re-auth unattended — e.g. it was created with `save_credentials: false`, has no stored credential, or the site now needs a fresh human step. When the reason is a blocker only a person can clear, run step 4 rather than looping on `login`.
+The connection keeps the profile signed in, so future runs start authenticated without repeating the hosted login. You only re-run the hosted login (step 4) when a connection goes `NEEDS_AUTH` — e.g. the site forced a full re-login. The profile and connection persist across sessions; deleting a browser doesn't remove them.
 
 ## Cleanup
 
@@ -65,6 +58,6 @@ Don't judge re-auth readiness from status alone. Read the connection with `manag
 
 ## Safety
 
-- Never type raw credentials into a page — always go through the hosted flow or pre-stored Kernel credentials.
+- Never type raw credentials into a page — always go through the hosted flow.
 - Don't read back, log, or exfiltrate credential values or MFA secrets.
 - Confirm with the user before any sensitive or irreversible action taken while signed in (a purchase, a send, a delete).
