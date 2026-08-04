@@ -15,7 +15,7 @@
     "start": "eve start",
     "deploy": "eve deploy",
     "typecheck": "tsc",
-    "connect:kernel": "vercel connect create mcp.onkernel.com --name eve-extension && vercel connect attach mcp.onkernel.com/eve-extension",
+    "connect:kernel": "vercel connect create kernel --name eve-extension && vercel connect attach kernel/eve-extension",
     "connect:slack": "export FF_CONNECT_ENABLED=1 && vercel connect create slack --name eve-connect-kernel --triggers && vercel connect detach slack/eve-connect-kernel --yes && vercel connect attach slack/eve-connect-kernel --triggers --trigger-path /eve/v1/slack --yes"
   },
   "dependencies": {

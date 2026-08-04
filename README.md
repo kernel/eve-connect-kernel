@@ -36,7 +36,7 @@ The browser connection authenticates through Vercel Connect — no `KERNEL_API_K
 ```ts
 import kernel from "@onkernel/eve-extension";
 
-export default kernel({ connect: "mcp.onkernel.com/eve-extension" });
+export default kernel({ connect: "kernel/eve-extension" });
 ```
 
 The first time a user drives the browser, eve surfaces a one-time Connect consent prompt. They approve once and it's cached across threads and sessions. Each user acts as themselves — which is exactly what you want when the agent is about to log into *their* accounts.
@@ -63,7 +63,7 @@ npm run connect:kernel       # create + attach the Kernel connector (one time)
 npm run dev                  # opens the interactive TUI
 ```
 
-`connect:kernel` provisions the `mcp.onkernel.com/eve-extension` connector the mount points at, so no key ever touches your app or env. Then, in the TUI:
+`connect:kernel` provisions the `kernel/eve-extension` connector the mount points at, so no key ever touches your app or env. `kernel` is Kernel's entry in Vercel's connector registry, so Vercel fills in the MCP URL, auth type, and branding — there's nothing to paste. Then, in the TUI:
 
 - `Log me into github.com` → the agent posts a hosted login link; you sign in and clear MFA, and it saves the profile.
 - `Using my github profile, go to github.com/explore and tell me 3 things it's showing based on my interests` → it opens a browser already signed in and reports back with the live-view URL.
