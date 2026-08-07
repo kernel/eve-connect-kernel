@@ -63,7 +63,7 @@ npm run connect:kernel       # create + attach the Kernel connector (one time)
 npm run dev                  # opens the interactive TUI
 ```
 
-`connect:kernel` provisions the `kernel/kernel-mcp` connector the mount points at, so no key ever touches your app or env. Then, in the TUI:
+`connect:kernel` provisions the `kernel/kernel-mcp` connector the mount points at, so no key ever touches your app or env. `kernel` is Kernel's entry in Vercel's connector registry, so Vercel fills in the MCP URL and branding; `--connection-method mcp` picks the per-user OAuth path over the registry entry's `api-key` alternative. Then, in the TUI:
 
 - `Log me into github.com` → the agent posts a hosted login link; you sign in and clear MFA, and it saves the profile.
 - `Using my github profile, go to github.com/explore and tell me 3 things it's showing based on my interests` → it opens a browser already signed in and reports back with the live-view URL.
