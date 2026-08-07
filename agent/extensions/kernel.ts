@@ -10,4 +10,4 @@ import kernel from "@onkernel/eve-extension";
 // themselves with a one-time consent that's cached afterward. Create the
 // connector once with `npm run connect:kernel` (see README) — no key ever
 // touches the app, env, or the model.
-export default kernel({ connect: "kernel/eve-extension" });
+export default kernel({ connect: "kernel/kernel-mcp" });
